@@ -3,7 +3,7 @@ use crate::types::{OfferSubmission, TokenInformation};
 use crate::utils::lean_imt::LeanIncrementalMerkleTree;
 use crate::utils::{hash_chain, hash_exit_root, hash_unrolled};
 use alloy_primitives::aliases::U96;
-use alloy_primitives::{keccak256, Address, FixedBytes, B256, U256};
+use alloy_primitives::{keccak256, Address, B256, U256};
 use alloy_sol_types::{sol, SolValue};
 
 #[test]
@@ -14,7 +14,7 @@ fn test_hash_chain() {
         .map(|_| OfferSubmission {
             offeror: Address::random(),
             id: U96::from(rand::random::<u64>()),
-            offerPriceHash: FixedBytes::random(),
+            offerPriceHash: B256::random(),
             amount: U256::from(rand::random::<u128>()),
             purchaseToken: Address::random(),
         })
@@ -80,10 +80,7 @@ fn test_hash_exit_root() {
 }
 
 // HELPER FUNCTIONS
-fn calculate_expected_hash_chain_output(
-    start_value: &FixedBytes<32>,
-    offers: &[OfferSubmission],
-) -> FixedBytes<32> {
+fn calculate_expected_hash_chain_output(start_value: &B256, offers: &[OfferSubmission]) -> B256 {
     sol! { struct ChainedStruct { bytes32 startValue; bytes newBytes; } }
     let mut expected_output: B256 = *start_value;
     for offer in offers {
