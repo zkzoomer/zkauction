@@ -2,8 +2,7 @@ use crate::precompiles::sp1_keccak256;
 use crate::types::{OfferSubmission, TokenInformation};
 use crate::utils::lean_imt::LeanIncrementalMerkleTree;
 use crate::utils::{hash_chain, hash_exit_root, hash_unrolled};
-use alloy_primitives::aliases::U96;
-use alloy_primitives::{keccak256, Address, B256, U256};
+use alloy_primitives::{aliases::U96, keccak256, Address, B256, U256};
 use alloy_sol_types::{sol, SolValue};
 
 #[test]
