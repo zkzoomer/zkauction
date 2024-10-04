@@ -27,7 +27,7 @@ pub fn main() {
     let tokens: Vec<TokenInformation> = sp1_zkvm::io::read::<Vec<TokenInformation>>();
 
     // Compute public values encoding the auction and its results
-    let public_values: PublicValuesStruct = run_auction(
+    let (acc_bids_hash, acc_offers_hash, tokens_hash, auction_result_root) = run_auction(
         &sp1_keccak256,
         bids,
         offers,
@@ -37,7 +37,12 @@ pub fn main() {
     );
 
     // Encode the public values of the program.
-    let bytes = PublicValuesStruct::abi_encode(&public_values);
+    let bytes = PublicValuesStruct::abi_encode(&PublicValuesStruct {
+        accBidsHash: acc_bids_hash,
+        accOffersHash: acc_offers_hash,
+        tokensHash: tokens_hash,
+        auctionResultRoot: auction_result_root,
+    });
 
     // Commit to the public values of the program. The final proof will have a commitment to all the
     // bytes that were committed to.
