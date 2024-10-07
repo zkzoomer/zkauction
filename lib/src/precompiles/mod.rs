@@ -20,16 +20,3 @@ pub fn sp1_keccak256(bytes: &[u8]) -> B256 {
     hasher.finalize(&mut output);
     output.into()
 }
-
-/// Computes the Keccak-256 hash of the input bytes optimizing for the RISC Zero zkVM.
-///
-/// # Arguments
-///
-/// * `bytes` - A slice of bytes to be hashed.
-///
-/// # Returns
-///
-/// A 32-byte array containing the Keccak-256 hash.
-pub fn risc0_keccak256(_bytes: &[u8]) -> [u8; 32] {
-    unimplemented!()
-}

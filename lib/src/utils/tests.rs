@@ -25,10 +25,6 @@ fn test_hash_chain() {
 
     // Assert
     assert_eq!(sp1_output, expected_output);
-
-    // TODO: Testing with `risc0_keccak256`
-    //let risc0_output: B256 = hash_unrolled(&risc0_keccak256, &encoded_tokens);
-    //assert_eq!(risc0_output, expected_output);
 }
 
 #[test]
@@ -50,14 +46,7 @@ fn test_hash_unrolled() {
 
     // Testing with `sp1_keccak256`
     let sp1_output: B256 = hash_unrolled(&sp1_keccak256, &tokens);
-    assert_eq!(
-        sp1_output, expected_output,
-        "SP1 output does not match expected output"
-    );
-
-    // TODO: Testing with `risc0_keccak256`
-    //let risc0_output: B256 = hash_unrolled(&risc0_keccak256, &encoded_tokens);
-    //assert_eq!(risc0_output, expected_output);
+    assert_eq!(sp1_output, expected_output);
 }
 
 #[test]
@@ -72,10 +61,6 @@ fn test_hash_exit_root() {
     // Testing with `sp1_keccak256`
     let sp1_output: B256 = hash_exit_root(&sp1_keccak256, &leaves);
     assert_eq!(sp1_output, expected_output);
-
-    // TODO: Test with risc0_keccak256 once implemented
-    //let risc0_output = hash_exit_root(&risc0_keccak256, &exit_root);
-    //assert_eq!(risc0_output, expected_output);
 }
 
 // HELPER FUNCTIONS

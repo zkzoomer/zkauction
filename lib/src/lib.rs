@@ -34,15 +34,15 @@ pub fn run_auction<F: Fn(&[u8]) -> B256>(
     tokens: Vec<TokenInformation>,
 ) -> (B256, B256, B256, B256) {
     // Compute the hash chain for the bids
-    let mut acc_bids_hash: B256 = hash_chain(&hash_function, &bids, &B256::ZERO);
-    acc_bids_hash = hash_chain(&hash_function, &revealed_bids, &acc_bids_hash);
+    let mut acc_bids_hash: B256 = hash_chain(&sp1_keccak256, &bids, &B256::ZERO);
+    acc_bids_hash = hash_chain(&sp1_keccak256, &revealed_bids, &acc_bids_hash);
 
     // Compute the hash chain for the offers
-    let mut acc_offers_hash: B256 = hash_chain(&hash_function, &offers, &B256::ZERO);
-    acc_offers_hash = hash_chain(&hash_function, &revealed_offers, &acc_offers_hash);
+    let mut acc_offers_hash: B256 = hash_chain(&sp1_keccak256, &offers, &B256::ZERO);
+    acc_offers_hash = hash_chain(&sp1_keccak256, &revealed_offers, &acc_offers_hash);
 
     // Compute the hash of the information of the tokens involved in the auction
-    let tokens_hash: B256 = hash_unrolled(&hash_function, &tokens);
+    let tokens_hash: B256 = hash_unrolled(&sp1_keccak256, &tokens);
 
     // TODO: Compute the auction result root
     let auction_result_root = B256::ZERO;
