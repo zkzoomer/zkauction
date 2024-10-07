@@ -4,6 +4,7 @@ use crate::utils::lean_imt::LeanIncrementalMerkleTree;
 use crate::utils::{hash_chain, hash_exit_root, hash_unrolled};
 use alloy_primitives::{aliases::U96, keccak256, Address, B256, U256};
 use alloy_sol_types::{sol, SolValue};
+use std::collections::HashMap;
 
 #[test]
 fn test_hash_chain() {
@@ -21,7 +22,7 @@ fn test_hash_chain() {
 
     // Execute
     let expected_output: B256 = calculate_expected_hash_chain_output(&start_value, &offers);
-    let sp1_output: B256 = hash_chain(&sp1_keccak256, &offers, &start_value);
+    let sp1_output: B256 = hash_chain(&sp1_keccak256, &offers, &start_value, &mut HashMap::new());
 
     // Assert
     assert_eq!(sp1_output, expected_output);

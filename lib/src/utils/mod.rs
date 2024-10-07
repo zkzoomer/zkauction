@@ -3,8 +3,10 @@ mod tests;
 
 mod lean_imt;
 
+use crate::types::{Bid, Offer, Saveable};
 use alloy_primitives::B256;
 use alloy_sol_types::SolValue;
+use std::collections::HashMap;
 
 /// Computes a hash chain over a sequence of items using a provided hash function.
 ///
@@ -22,12 +24,18 @@ use alloy_sol_types::SolValue;
 ///
 /// * `F` - The type of the hash function.
 /// * `S` - The type of items in the slice, which must implement `SolValue`.
-pub fn hash_chain<F, S>(hash_function: &F, items: &[S], start_value: &B256) -> B256
+pub fn hash_chain<F, S, T>(
+    hash_function: &F,
+    items: &[S],
+    start_value: &B256,
+    orders: &mut HashMap<B256, S::T>, // TODO: make less convoluted
+) -> B256
 where
     F: Fn(&[u8]) -> B256,
-    S: SolValue,
+    S: SolValue + Saveable,
 {
     items.iter().fold(*start_value, |acc: B256, item: &S| {
+        item.save(orders); // Now passing a reference to the HashMap
         let encoded_item: Vec<u8> = item.abi_encode_packed();
         let input: Vec<u8> = [&acc[..], &encoded_item].concat();
         hash_function(&input)

@@ -25,8 +25,7 @@ use utils::{hash_chain, hash_unrolled};
 /// # Returns
 ///
 /// Returns a `PublicValuesStruct` containing the computed hashes and auction result root.
-pub fn run_auction<F: Fn(&[u8]) -> B256>(
-    hash_function: &F,
+pub fn run_auction(
     bids: Vec<BidSubmission>,
     offers: Vec<OfferSubmission>,
     revealed_bids: Vec<BidReveal>,
