@@ -1,5 +1,5 @@
 use super::utils::{add_to_hash_chain, get_key, get_price_hash};
-use super::ChainableOrders;
+use super::ChainableSubmissions;
 use crate::constants::MAX_BID_PRICE;
 use alloy_primitives::{aliases::U96, Address, B256, U256};
 use alloy_sol_types::sol;
@@ -124,7 +124,7 @@ sol! {
 /// Represents the history of all bid submissions made onchain.
 pub type BidSubmissions = Vec<BidSubmission>;
 
-impl ChainableOrders for BidSubmissions {
+impl ChainableSubmissions for BidSubmissions {
     type T = Bid;
     /// # Behavior
     ///
@@ -158,7 +158,7 @@ sol! {
 /// Represents the history of all bid reveals made onchain.
 pub type BidReveals = Vec<BidReveal>;
 
-impl ChainableOrders for BidReveals {
+impl ChainableSubmissions for BidReveals {
     type T = Bid;
     /// # Behavior
     ///

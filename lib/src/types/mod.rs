@@ -20,7 +20,8 @@ sol! {
     }
 }
 
-pub trait ChainableOrders {
+/// Trait for types that represent onchain chainable orders.
+pub trait ChainableSubmissions {
     type T;
     /// Computes an orders hash chain while updating the orders in the provided `orders` mapping with the revealed price information.
     ///

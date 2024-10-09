@@ -1,5 +1,5 @@
 use super::utils::{add_to_hash_chain, get_key, get_price_hash};
-use super::ChainableOrders;
+use super::ChainableSubmissions;
 use crate::constants::MAX_OFFER_PRICE;
 use alloy_primitives::{aliases::U96, Address, B256, U256};
 use alloy_sol_types::sol;
@@ -107,7 +107,7 @@ sol! {
 /// Represents the history of all offer submissions made onchain.
 pub type OfferSubmissions = Vec<OfferSubmission>;
 
-impl ChainableOrders for OfferSubmissions {
+impl ChainableSubmissions for OfferSubmissions {
     type T = Offer;
     /// # Behavior
     ///
@@ -142,7 +142,7 @@ sol! {
 /// Represents the history of all offer reveals made onchain.
 pub type OfferReveals = Vec<OfferReveal>;
 
-impl ChainableOrders for OfferReveals {
+impl ChainableSubmissions for OfferReveals {
     type T = Offer;
     /// # Behavior
     ///
