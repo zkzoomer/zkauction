@@ -1,5 +1,5 @@
 use super::utils::{add_to_hash_chain, get_key, get_price_hash};
-use super::ChainableSubmissions;
+use super::{ChainableSubmissions, PlacedOrders};
 use crate::constants::MAX_OFFER_PRICE;
 use alloy_primitives::{aliases::U96, Address, B256, U256};
 use alloy_sol_types::sol;
@@ -87,6 +87,31 @@ impl Offer {
 /// The value is a `Offer` struct, containing all details of the offer.
 pub type Offers = HashMap<B256, Offer>;
 
+/// A collection of all validated offers.
+pub type ValidatedOffers = Vec<Offer>;
+
+impl PlacedOrders for Offers {
+    type OrderSubmission = OfferSubmission;
+    type Order = Offer;
+
+    /// # Behavior
+    ///
+    /// - If the offer's amount is zero, the offer is removed from the collection.
+    /// - If an offer with the same key already exists, it is updated with the new submission details.
+    /// - If no offer exists for the key, a new `Offer` instance is created and inserted.
+    fn save_or_update_order(&mut self, order_submission: &OfferSubmission) {
+        let key: B256 = get_key(&order_submission.offeror, &order_submission.id);
+        if order_submission.amount.is_zero() {
+            self.remove(&key);
+        } else {
+            self.entry(key)
+                .and_modify(|existing_offer: &mut Offer| {
+                    existing_offer.update_with_offer_submission(order_submission);
+                })
+                .or_insert_with(|| Offer::from_offer_submission(order_submission));
+        }
+    }
+}
 sol! {
     /// An `OfferSubmission` represents an offer submission to lend an amount of money for a specific interest rate
     #[derive(Serialize, Deserialize)]
@@ -117,12 +142,13 @@ impl ChainableSubmissions for OfferSubmissions {
     where
         F: Fn(&[u8]) -> B256,
     {
-        self.iter()
-            .fold(start_value, |acc: B256, item: &OfferSubmission| {
-                save_or_update_offer(offers, item);
-                // Add value to hash chain
-                add_to_hash_chain(hash_function, item, &acc)
-            })
+        self.iter().fold(
+            start_value,
+            |acc: B256, offer_submission: &OfferSubmission| {
+                offers.save_or_update_order(offer_submission);
+                add_to_hash_chain(hash_function, offer_submission, &acc)
+            },
+        )
     }
 }
 
@@ -164,32 +190,6 @@ impl ChainableSubmissions for OfferReveals {
                 // Add value to hash chain
                 add_to_hash_chain(hash_function, item, &acc)
             })
-    }
-}
-
-/// Saves a new offer, updates an existing one, or deletes it from the offers collection.
-///
-/// # Arguments
-///
-/// * `offers` - A mutable reference to the `Offers` collection (HashMap) to modify.
-/// * `offer_submission` - A reference to the `OfferSubmission` containing the offer details.
-///
-/// # Behavior
-///
-/// - If the offer's amount is zero, the offer is removed from the collection.
-/// - If an offer with the same key already exists, it is updated with the new submission details.
-/// - If no offer exists for the key, a new `Offer` instance is created and inserted.
-fn save_or_update_offer(offers: &mut Offers, offer_submission: &OfferSubmission) {
-    let key: B256 = get_key(&offer_submission.offeror, &offer_submission.id);
-    if offer_submission.amount.is_zero() {
-        offers.remove(&key);
-    } else {
-        offers
-            .entry(key)
-            .and_modify(|existing_offer: &mut Offer| {
-                existing_offer.update_with_offer_submission(offer_submission);
-            })
-            .or_insert_with(|| Offer::from_offer_submission(offer_submission));
     }
 }
 
@@ -277,7 +277,7 @@ mod tests {
         let mut offer_submission: OfferSubmission = random_offer_submission();
 
         // Saves the offer if new
-        save_or_update_offer(&mut offers, &offer_submission);
+        offers.save_or_update_order(&offer_submission);
 
         let offer: Offer = Offer::from_offer_submission(&offer_submission);
         assert_eq!(offers.len(), 1);
@@ -291,7 +291,7 @@ mod tests {
         // Updates the offer if it already exists
         offer_submission.offerPriceHash = B256::random();
         offer_submission.amount = U256::from(rand::random::<u128>());
-        save_or_update_offer(&mut offers, &offer_submission);
+        offers.save_or_update_order(&offer_submission);
 
         let offer: Offer = Offer::from_offer_submission(&offer_submission);
         assert_eq!(offers.len(), 1);
@@ -304,7 +304,7 @@ mod tests {
 
         // Deletes the offer if amount is zero
         offer_submission.amount = U256::ZERO;
-        save_or_update_offer(&mut offers, &offer_submission);
+        offers.save_or_update_order(&offer_submission);
         assert_eq!(offers.len(), 0);
     }
 
@@ -316,7 +316,7 @@ mod tests {
         let offer_submissions: OfferSubmissions = (0..42)
             .map(|_| {
                 let offer_submission: OfferSubmission = random_offer_submission();
-                save_or_update_offer(&mut expected_offers, &offer_submission);
+                expected_offers.save_or_update_order(&offer_submission);
                 offer_submission
             })
             .collect();
@@ -344,7 +344,7 @@ mod tests {
                 let nonce: U256 = U256::from(rand::random::<u128>());
                 let offer_submission: OfferSubmission =
                     valid_random_offer_submission(&price, &nonce);
-                save_or_update_offer(&mut expected_offers, &offer_submission);
+                expected_offers.save_or_update_order(&offer_submission);
                 offer_reveals.push(OfferReveal {
                     orderId: get_key(&offer_submission.offeror, &offer_submission.id).into(),
                     price,

@@ -1,5 +1,5 @@
 use super::utils::{add_to_hash_chain, get_key, get_price_hash};
-use super::ChainableSubmissions;
+use super::{ChainableSubmissions, PlacedOrders};
 use crate::constants::MAX_BID_PRICE;
 use alloy_primitives::{aliases::U96, Address, B256, U256};
 use alloy_sol_types::sol;
@@ -100,6 +100,33 @@ impl Bid {
 /// The value is a `Bid` struct, containing all details of the bid.
 pub type Bids = HashMap<B256, Bid>;
 
+/// A collection of all validated bids.
+pub type ValidatedBids = Vec<Bid>;
+
+impl PlacedOrders for Bids {
+    type OrderSubmission = BidSubmission;
+    type Order = Bid;
+
+    /// # Behavior
+    ///
+    /// - If the bid's collateral amount is zero, the bid is removed from the collection.
+    /// - If a bid with the same key already exists, it is updated with the new submission details.
+    /// - If no bid exists for the key, a new `Bid` instance is created and inserted.
+    fn save_or_update_order(&mut self, order_submission: &BidSubmission) {
+        let key: B256 = get_key(&order_submission.bidder, &order_submission.id);
+        if order_submission.collateralAmount.is_zero() {
+            // Assuming a zero collateral amount indicates a bid cancellation.
+            self.remove(&key);
+        } else {
+            self.entry(key)
+                .and_modify(|existing_bid: &mut Bid| {
+                    existing_bid.update_from_bid_submission(order_submission);
+                })
+                .or_insert_with(|| Bid::from_bid_submission(order_submission));
+        }
+    }
+}
+
 sol! {
     /// A `BidSubmission` represents a bid submission to borrow an amount of money for a specific interest rate
     #[derive(Serialize, Deserialize)]
@@ -135,9 +162,9 @@ impl ChainableSubmissions for BidSubmissions {
         F: Fn(&[u8]) -> B256,
     {
         self.iter()
-            .fold(start_value, |acc: B256, item: &BidSubmission| {
-                save_or_update_bid(bids, item);
-                add_to_hash_chain(hash_function, item, &acc)
+            .fold(start_value, |acc: B256, bid_submission: &BidSubmission| {
+                bids.save_or_update_order(bid_submission);
+                add_to_hash_chain(hash_function, bid_submission, &acc)
             })
     }
 }
@@ -179,32 +206,6 @@ impl ChainableSubmissions for BidReveals {
                 }
                 add_to_hash_chain(hash_function, item, &acc)
             })
-    }
-}
-
-/// Saves a new bid, updates an existing one, or deletes it from the bids collection.
-///
-/// # Arguments
-///
-/// * `bids` - A mutable reference to the `Bids` collection (HashMap) to modify.
-/// * `bid_submission` - A reference to the `BidSubmission` containing the bid details.
-///
-/// # Behavior
-///
-/// - If the bid's collateral amount is zero, the bid is removed from the collection.
-/// - If a bid with the same key already exists, it is updated with the new submission details.
-/// - If no bid exists for the key, a new `Bid` instance is created and inserted.
-fn save_or_update_bid(bids: &mut Bids, bid_submission: &BidSubmission) {
-    let key: B256 = get_key(&bid_submission.bidder, &bid_submission.id);
-    if bid_submission.collateralAmount.is_zero() {
-        // Assuming a zero collateral amount indicates a bid cancellation.
-        bids.remove(&key);
-    } else {
-        bids.entry(key)
-            .and_modify(|existing_bid: &mut Bid| {
-                existing_bid.update_from_bid_submission(bid_submission);
-            })
-            .or_insert_with(|| Bid::from_bid_submission(bid_submission));
     }
 }
 
@@ -295,7 +296,7 @@ mod tests {
         let mut bid_submission: BidSubmission = random_bid_submission();
 
         // Saves the bid if new
-        save_or_update_bid(&mut bids, &bid_submission);
+        bids.save_or_update_order(&bid_submission);
 
         let bid: Bid = Bid::from_bid_submission(&bid_submission);
         assert_eq!(bids.len(), 1);
@@ -309,7 +310,7 @@ mod tests {
         bid_submission.bidPriceHash = B256::random();
         bid_submission.amount = U256::from(rand::random::<u128>());
         bid_submission.collateralAmount = U256::from(rand::random::<u128>());
-        save_or_update_bid(&mut bids, &bid_submission);
+        bids.save_or_update_order(&bid_submission);
 
         let bid: Bid = Bid::from_bid_submission(&bid_submission);
         assert_eq!(bids.len(), 1);
@@ -321,7 +322,7 @@ mod tests {
 
         // Deletes the bid if collateral amount is zero
         bid_submission.collateralAmount = U256::ZERO;
-        save_or_update_bid(&mut bids, &bid_submission);
+        bids.save_or_update_order(&bid_submission);
         assert_eq!(bids.len(), 0);
     }
 
@@ -333,7 +334,7 @@ mod tests {
         let bid_submissions: BidSubmissions = (0..42)
             .map(|_| {
                 let bid_submission: BidSubmission = random_bid_submission();
-                save_or_update_bid(&mut expected_bids, &bid_submission);
+                expected_bids.save_or_update_order(&bid_submission);
                 bid_submission
             })
             .collect();
@@ -360,7 +361,7 @@ mod tests {
                     U256::from(rand::random::<u64>() % crate::constants::MAX_BID_PRICE);
                 let nonce: U256 = U256::from(rand::random::<u128>());
                 let bid_submission: BidSubmission = valid_random_bid_submission(&price, &nonce);
-                save_or_update_bid(&mut expected_bids, &bid_submission);
+                expected_bids.save_or_update_order(&bid_submission);
                 bid_reveals.push(BidReveal {
                     orderId: get_key(&bid_submission.bidder, &bid_submission.id).into(),
                     price,

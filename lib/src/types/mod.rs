@@ -4,7 +4,7 @@ pub mod offers;
 pub mod tokens;
 pub mod utils;
 use alloy_primitives::B256;
-use alloy_sol_types::sol;
+use alloy_sol_types::{sol, SolValue};
 use std::collections::HashMap;
 
 sol! {
@@ -15,7 +15,7 @@ sol! {
         /// Reconstructed hash chain of all offers placed and revealed onchain
         bytes32 accOffersHash;
         /// Hashed together information on the tokens involved
-        bytes32 tokensHash;
+        bytes32 tokenPricesHash;
         /// The root of the auction results tree
         bytes32 auctionResultRoot;
     }
@@ -42,6 +42,25 @@ pub trait ChainableSubmissions {
         F: Fn(&[u8]) -> B256;
 }
 
+/// Trait for types that can be "unrolled" at once into a single `abi.encodePacked`-able value.
 pub trait UnrollableStructs {
+    /// Computes a single hash value from the implementing type's fields.
+    ///
+    /// # Arguments
+    ///
+    /// * `hash_function` - A function that computes a 32-byte hash from a byte slice.
     fn hash_together<F: Fn(&[u8]) -> B256>(&self, hash_function: &F) -> B256;
+}
+
+pub trait PlacedOrders {
+    type OrderSubmission;
+    type Order;
+
+    /// Saves a new order, updates an existing one, or deletes it from the orders collection.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - A mutable reference to the `Orders` collection (HashMap) to modify.
+    /// * `order_submission` - A reference to the `OrderSubmission` containing the order details.
+    fn save_or_update_order(&mut self, order_submission: &Self::OrderSubmission);
 }
