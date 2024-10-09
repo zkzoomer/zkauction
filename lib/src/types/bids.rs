@@ -72,7 +72,7 @@ impl Bid {
     /// # Arguments
     ///
     /// * `self` - The bid being updated.
-    /// * `hash_function` - A function that computes a hash from a byte slice.
+    /// * `hash_function` - A function that computes a 32-byte hash from a byte slice.
     /// * `bid_reveal` - The reveal information containing the price and nonce.
     pub fn update_from_bid_reveal<F: Fn(&[u8]) -> B256>(
         &mut self,

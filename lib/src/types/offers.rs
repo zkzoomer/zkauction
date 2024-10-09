@@ -59,7 +59,7 @@ impl Offer {
     /// # Arguments
     ///
     /// * `self` - The offer being updated.
-    /// * `hash_function` - A function that computes a hash from a byte slice.
+    /// * `hash_function` - A function that computes a 32-byte hash from a byte slice.
     /// * `offer_reveal` - The reveal information containing the price and nonce.
     pub fn update_from_offer_reveal<F: Fn(&[u8]) -> B256>(
         &mut self,
