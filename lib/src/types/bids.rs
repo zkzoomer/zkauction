@@ -11,27 +11,27 @@ use std::collections::HashMap;
 #[derive(PartialEq, Eq, Debug)]
 pub struct Bid {
     /// Unique identifier for the bid, combined with `bidder` to form a complete key.
-    id: U96,
+    pub id: U96,
     /// Ethereum address of the bidder.
-    bidder: Address,
+    pub bidder: Address,
     /// Keccak-256 hash of the bid price and a nonce, enabling the blind auction process.
-    bid_price_hash: B256,
+    pub bid_price_hash: B256,
     /// The actual bid price revealed during the reveal phase, initially zero.
-    bid_price_revealed: U256,
+    pub bid_price_revealed: U256,
     /// Maximum amount of purchase tokens that can be borrowed.
-    amount: U256,
+    pub amount: U256,
     /// Amount of collateral tokens locked for this bid.
-    collateral_amount: U256,
+    pub collateral_amount: U256,
     /// Address of the ERC20 token to be borrowed (purchase token).
-    purchase_token: Address,
+    pub purchase_token: Address,
     /// Address of the ERC20 token used as collateral.
-    collateral_token: Address,
+    pub collateral_token: Address,
     /// Indicates whether this bid is part of a rollover process.
-    is_rollover: bool,
+    pub is_rollover: bool,
     /// Address of the term repo servicer for rollover pair-offs, if applicable.
-    rollover_pair_off_term_repo_servicer: Address,
+    pub rollover_pair_off_term_repo_servicer: Address,
     /// Indicates whether the bid has been revealed in the reveal phase.
-    is_revealed: bool,
+    pub is_revealed: bool,
 }
 
 impl Order for Bid {

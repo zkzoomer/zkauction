@@ -11,19 +11,19 @@ use std::collections::HashMap;
 #[derive(PartialEq, Eq, Debug)]
 pub struct Offer {
     /// Unique identifier for the offer, combined with `offeror` to form a complete key.
-    id: U96,
+    pub id: U96,
     /// Ethereum address of the offeror (lender).
-    offeror: Address,
+    pub offeror: Address,
     /// Keccak-256 hash of the offer price and a nonce, enabling the blind auction process.
-    offer_price_hash: B256,
+    pub offer_price_hash: B256,
     /// The actual offer price revealed during the reveal phase, initially zero.
-    offer_price_revealed: U256,
+    pub offer_price_revealed: U256,
     /// Maximum amount of purchase tokens that can be lent.
-    amount: U256,
+    pub amount: U256,
     /// Address of the ERC20 token to be lent (purchase token).
-    purchase_token: Address,
+    pub purchase_token: Address,
     /// Indicates whether the offer has been revealed in the reveal phase.
-    is_revealed: bool,
+    pub is_revealed: bool,
 }
 
 impl Order for Offer {
