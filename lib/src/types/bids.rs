@@ -59,6 +59,7 @@ impl Bid {
     ///
     /// # Arguments
     ///
+    /// * `self` - The bid being updated.
     /// * `bid_submission` - The new bid submission.
     pub fn update_from_bid_submission(&mut self, bid_submission: &BidSubmission) {
         self.amount = bid_submission.amount;
@@ -70,6 +71,7 @@ impl Bid {
     ///
     /// # Arguments
     ///
+    /// * `self` - The bid being updated.
     /// * `hash_function` - A function that computes a hash from a byte slice.
     /// * `bid_reveal` - The reveal information containing the price and nonce.
     pub fn update_from_bid_reveal<F: Fn(&[u8]) -> B256>(
@@ -214,9 +216,9 @@ mod tests {
 
     #[test]
     fn test_bid_from_bid_submission() {
-        let bid_submission = random_bid_submission();
+        let bid_submission: BidSubmission = random_bid_submission();
 
-        let bid = Bid::from_bid_submission(&bid_submission);
+        let bid: Bid = Bid::from_bid_submission(&bid_submission);
         assert_eq!(bid.bidder, bid_submission.bidder);
         assert_eq!(bid.id, bid_submission.id);
         assert_eq!(bid.bid_price_hash, bid_submission.bidPriceHash);
@@ -228,10 +230,10 @@ mod tests {
 
     #[test]
     fn test_bid_update_from_bid_submission() {
-        let bid_submission = random_bid_submission();
+        let bid_submission: BidSubmission = random_bid_submission();
 
         let mut bid = Bid::from_bid_submission(&bid_submission);
-        let new_bid_submission = random_bid_submission();
+        let new_bid_submission: BidSubmission = random_bid_submission();
 
         bid.update_from_bid_submission(&new_bid_submission);
         assert_eq!(bid.amount, new_bid_submission.amount);
@@ -242,10 +244,10 @@ mod tests {
     #[test]
     fn test_bid_update_from_bid_reveal() {
         // Valid reveal
-        let price = U256::from(rand::random::<u64>() % crate::constants::MAX_BID_PRICE);
-        let nonce = U256::from(rand::random::<u128>());
-        let bid_submission = valid_random_bid_submission(&price, &nonce);
-        let mut bid = Bid::from_bid_submission(&bid_submission);
+        let price: U256 = U256::from(rand::random::<u64>() % crate::constants::MAX_BID_PRICE);
+        let nonce: U256 = U256::from(rand::random::<u128>());
+        let bid_submission: BidSubmission = valid_random_bid_submission(&price, &nonce);
+        let mut bid: Bid = Bid::from_bid_submission(&bid_submission);
         bid.update_from_bid_reveal(
             &|x| keccak256(x),
             &BidReveal {
@@ -258,9 +260,9 @@ mod tests {
         assert!(bid.is_revealed);
 
         // Invalid reveal
-        let mut bid = Bid::from_bid_submission(&bid_submission);
+        let mut bid: Bid = Bid::from_bid_submission(&bid_submission);
         bid.update_from_bid_reveal(
-            &|x| keccak256(x),
+            &|x: &[u8]| keccak256(x),
             &BidReveal {
                 orderId: get_key(&bid_submission.bidder, &bid_submission.id).into(),
                 price: U256::from(rand::random::<u128>()),
@@ -271,12 +273,12 @@ mod tests {
         assert!(!bid.is_revealed);
 
         // Valid reveal with out of bounds price
-        let price = U256::from(crate::constants::MAX_BID_PRICE + 1);
-        let nonce = U256::from(rand::random::<u128>());
-        let bid_submission = valid_random_bid_submission(&price, &nonce);
-        let mut bid = Bid::from_bid_submission(&bid_submission);
+        let price: U256 = U256::from(crate::constants::MAX_BID_PRICE + 1);
+        let nonce: U256 = U256::from(rand::random::<u128>());
+        let bid_submission: BidSubmission = valid_random_bid_submission(&price, &nonce);
+        let mut bid: Bid = Bid::from_bid_submission(&bid_submission);
         bid.update_from_bid_reveal(
-            &|x| keccak256(x),
+            &|x: &[u8]| keccak256(x),
             &BidReveal {
                 orderId: get_key(&bid_submission.bidder, &bid_submission.id).into(),
                 price,
@@ -290,12 +292,12 @@ mod tests {
     #[test]
     fn test_save_or_update_bid() {
         let mut bids: Bids = Bids::new();
-        let mut bid_submission = random_bid_submission();
+        let mut bid_submission: BidSubmission = random_bid_submission();
 
         // Saves the bid if new
         save_or_update_bid(&mut bids, &bid_submission);
 
-        let bid = Bid::from_bid_submission(&bid_submission);
+        let bid: Bid = Bid::from_bid_submission(&bid_submission);
         assert_eq!(bids.len(), 1);
         bid_eq(
             &bid,
@@ -309,7 +311,7 @@ mod tests {
         bid_submission.collateralAmount = U256::from(rand::random::<u128>());
         save_or_update_bid(&mut bids, &bid_submission);
 
-        let bid = Bid::from_bid_submission(&bid_submission);
+        let bid: Bid = Bid::from_bid_submission(&bid_submission);
         assert_eq!(bids.len(), 1);
         bid_eq(
             &bid,
@@ -320,7 +322,6 @@ mod tests {
         // Deletes the bid if collateral amount is zero
         bid_submission.collateralAmount = U256::ZERO;
         save_or_update_bid(&mut bids, &bid_submission);
-
         assert_eq!(bids.len(), 0);
     }
 
@@ -331,15 +332,17 @@ mod tests {
         let mut expected_bids: Bids = Bids::new();
         let bid_submissions: BidSubmissions = (0..42)
             .map(|_| {
-                let bid_submission = random_bid_submission();
+                let bid_submission: BidSubmission = random_bid_submission();
                 save_or_update_bid(&mut expected_bids, &bid_submission);
                 bid_submission
             })
             .collect();
-        let expected_output = calculate_expected_hash_chain_output(&start_value, &bid_submissions);
+        let expected_output: B256 =
+            calculate_expected_hash_chain_output(&start_value, &bid_submissions);
 
         let mut bids: Bids = Bids::new();
-        let output = bid_submissions.hash_chain(&|x| keccak256(x), start_value, &mut bids);
+        let output: B256 =
+            bid_submissions.hash_chain(&|x: &[u8]| keccak256(x), start_value, &mut bids);
 
         assert_eq!(expected_output, output);
         assert_eq!(expected_bids, bids);
@@ -347,7 +350,7 @@ mod tests {
 
     #[test]
     fn test_bid_reveals_hash_chain() {
-        // Setup
+        // Random values
         let start_value: B256 = B256::random();
         let mut expected_bids: Bids = Bids::new();
         let mut bid_reveals: BidReveals = BidReveals::new();
@@ -356,7 +359,7 @@ mod tests {
                 let price: U256 =
                     U256::from(rand::random::<u64>() % crate::constants::MAX_BID_PRICE);
                 let nonce: U256 = U256::from(rand::random::<u128>());
-                let bid_submission = valid_random_bid_submission(&price, &nonce);
+                let bid_submission: BidSubmission = valid_random_bid_submission(&price, &nonce);
                 save_or_update_bid(&mut expected_bids, &bid_submission);
                 bid_reveals.push(BidReveal {
                     orderId: get_key(&bid_submission.bidder, &bid_submission.id).into(),
@@ -368,7 +371,7 @@ mod tests {
             .collect();
         bid_reveals.iter().for_each(|bid_reveal: &BidReveal| {
             if let Some(bid) = expected_bids.get_mut::<B256>(&bid_reveal.orderId.into()) {
-                bid.update_from_bid_reveal(&|x| keccak256(x), bid_reveal);
+                bid.update_from_bid_reveal(&|x: &[u8]| keccak256(x), bid_reveal);
             }
         });
         let mut expected_output: B256 =
@@ -377,8 +380,8 @@ mod tests {
 
         let mut bids: Bids = Bids::new();
         let mut output: B256 =
-            bid_submissions.hash_chain(&|x| keccak256(x), start_value, &mut bids);
-        output = bid_reveals.hash_chain(&|x| keccak256(x), output, &mut bids);
+            bid_submissions.hash_chain(&|x: &[u8]| keccak256(x), start_value, &mut bids);
+        output = bid_reveals.hash_chain(&|x: &[u8]| keccak256(x), output, &mut bids);
 
         assert_eq!(expected_output, output);
         assert_eq!(expected_bids, bids);
