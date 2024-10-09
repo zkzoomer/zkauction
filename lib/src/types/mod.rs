@@ -28,7 +28,7 @@ pub trait ChainableSubmissions {
     /// # Arguments
     ///
     /// * `self` - The `T` instance containing all orders placed onchain.
-    /// * `hash_function` - The hash function to use for the hash chain.
+    /// * `hash_function` - A function that computes a 32-byte hash from a byte slice.
     /// * `start_value` - The initial 32-byte value to start the hash chain.
     /// * `orders` - A mutable reference to the `T` HashMap where all orders will be updated.
     fn hash_chain<F>(
