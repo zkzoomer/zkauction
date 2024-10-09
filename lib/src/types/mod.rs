@@ -54,7 +54,7 @@ pub trait UnrollableStructs {
 
 pub trait PlacedOrders {
     type OrderSubmission;
-    type Order;
+    type Order: Order;
 
     /// Saves a new order, updates an existing one, or deletes it from the orders collection.
     ///
@@ -63,4 +63,61 @@ pub trait PlacedOrders {
     /// * `self` - A mutable reference to the `Orders` collection (HashMap) to modify.
     /// * `order_submission` - A reference to the `OrderSubmission` containing the order details.
     fn save_or_update_order(&mut self, order_submission: &Self::OrderSubmission);
+
+    fn validate_orders(
+        &self,
+        token_map: &tokens::TokenMap,
+        exit_leaves: &exit_tree::ExitLeaves,
+    ) -> Vec<Self::Order> {
+        vec![]
+    }
 }
+
+pub trait Order {
+    type OrderSubmission;
+    type OrderReveal;
+
+    /// Creates a new order from an order submission.
+    ///
+    /// # Arguments
+    ///
+    /// * `order_submission` - The order submission.
+    fn from_order_submission(order_submission: &Self::OrderSubmission) -> Self;
+
+    /// Updates the order with a new order submission.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The order being updated.
+    /// * `order_submission` - The new order submission.
+    fn update_from_order_submission(&mut self, order_submission: &Self::OrderSubmission);
+
+    /// Updates the order with revealed information if the reveal is valid.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The order being updated.
+    /// * `hash_function` - A function that computes a 32-byte hash from a byte slice.
+    /// * `order_reveal` - The reveal information containing the price and nonce.
+    fn update_from_order_reveal<F: Fn(&[u8]) -> B256>(
+        &mut self,
+        hash_function: &F,
+        order_reveal: &Self::OrderReveal,
+    );
+
+    /// Returns true if the order is valid and can go to auction matching.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The order being checked.
+    fn is_valid(&self) -> bool;
+
+    /// Converts the order to an exit leaf.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The order being converted.
+    fn to_exit_leaf(&self) -> exit_tree::ExitLeaf;
+}
+
+pub trait OrdersMapping {}
