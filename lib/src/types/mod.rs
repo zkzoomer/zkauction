@@ -1,4 +1,5 @@
 pub mod bids;
+pub mod exit_tree;
 pub mod offers;
 pub mod tokens;
 pub mod utils;
