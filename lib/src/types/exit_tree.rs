@@ -1,7 +1,42 @@
 use alloy_primitives::B256;
-use alloy_sol_types::SolValue;
+use alloy_sol_types::{sol, SolValue};
 
-pub type ExitLeaves<S> = Vec<S>;
+sol! {
+    #[derive(PartialEq, Eq, Debug)]
+    struct ExitLeafWithdrawal {
+        address recipient;
+        address token;
+        uint256 amount;
+    }
+
+    #[derive(PartialEq, Eq, Debug)]
+    struct ExitLeafRepurchaseObligation {
+        address debtor;
+        address repurchaseToken;
+        uint256 repurchaseAmount;
+        address collateralToken;
+        uint256 collateralAmount;
+    }
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub enum ExitLeaf {
+    Withdrawal(ExitLeafWithdrawal),
+    RepurchaseObligation(ExitLeafRepurchaseObligation),
+}
+
+impl ExitLeaf {
+    pub fn hash<F: Fn(&[u8]) -> B256>(&self, hash_function: &F) -> B256 {
+        match self {
+            ExitLeaf::Withdrawal(withdrawal) => hash_function(&withdrawal.abi_encode_packed()),
+            ExitLeaf::RepurchaseObligation(obligation) => {
+                hash_function(&obligation.abi_encode_packed())
+            }
+        }
+    }
+}
+
+pub type ExitLeaves = Vec<ExitLeaf>;
 
 /// Defines a lean incremental Merkle tree.
 pub trait ExitTree {
@@ -25,7 +60,7 @@ pub trait ExitTree {
     fn hash_exit_root<F: Fn(&[u8]) -> B256>(&self, hash_function: &F) -> B256;
 }
 
-impl<S: SolValue> ExitTree for ExitLeaves<S> {
+impl ExitTree for ExitLeaves {
     fn hash_exit_root<F: Fn(&[u8]) -> B256>(&self, hash_function: &F) -> B256 {
         if self.is_empty() {
             return B256::ZERO;
@@ -34,7 +69,7 @@ impl<S: SolValue> ExitTree for ExitLeaves<S> {
         // Get the hash of each leaf
         let mut current_level: Vec<B256> = self
             .iter()
-            .map(|leaf: &S| hash_function(&leaf.abi_encode_packed()))
+            .map(|leaf: &ExitLeaf| leaf.hash(hash_function))
             .collect();
 
         // Hash the leaves in pairs or keep the leaf if there's no pair until we get the root
@@ -61,24 +96,21 @@ mod tests {
     use super::*;
     use crate::precompiles::sp1_keccak256;
     use crate::utils::lean_imt::LeanIncrementalMerkleTree;
-    use alloy_primitives::{keccak256, B256};
-    use alloy_sol_types::sol;
-
-    sol! {
-        struct TestLeaf {
-            bytes32 item;
-        }
-    }
+    use alloy_primitives::{keccak256, Address, B256, U256};
+    use rand::{
+        distributions::{Distribution, Standard},
+        Rng,
+    };
 
     #[test]
     fn test_hash_exit_root() {
         // Setup
         let mut leaves: Vec<B256> = Vec::new();
-        let exit_leaves: ExitLeaves<TestLeaf> = (0..11)
+        let exit_leaves: ExitLeaves = (0..11)
             .map(|_| {
-                let item: B256 = B256::random();
-                leaves.push(keccak256(item));
-                TestLeaf { item }
+                let exit_leaf: ExitLeaf = rand::random();
+                leaves.push(exit_leaf.hash(&|x: &[u8]| keccak256(x)));
+                exit_leaf
             })
             .collect();
 
@@ -93,5 +125,27 @@ mod tests {
         // TODO: Test with risc0_keccak256 once implemented
         //let risc0_output = hash_exit_root(&risc0_keccak256, &exit_root);
         //assert_eq!(risc0_output, expected_output);
+    }
+
+    // HELPER FUNCTIONS
+    /// Creates a random `ExitLeaf`
+    impl Distribution<ExitLeaf> for Standard {
+        fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> ExitLeaf {
+            match rng.gen_range(0..=1) {
+                0 => ExitLeaf::Withdrawal(ExitLeafWithdrawal {
+                    recipient: Address::random(),
+                    token: Address::random(),
+                    amount: U256::from(rand::random::<u128>()),
+                }),
+                1 => ExitLeaf::RepurchaseObligation(ExitLeafRepurchaseObligation {
+                    debtor: Address::random(),
+                    repurchaseToken: Address::random(),
+                    repurchaseAmount: U256::from(rand::random::<u128>()),
+                    collateralToken: Address::random(),
+                    collateralAmount: U256::from(rand::random::<u128>()),
+                }),
+                _ => unreachable!(),
+            }
+        }
     }
 }
