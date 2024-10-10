@@ -15,7 +15,7 @@ use clap::{Parser, ValueEnum};
 use serde::{Deserialize, Serialize};
 use sp1_sdk::{HashableKey, ProverClient, SP1ProofWithPublicValues, SP1Stdin, SP1VerifyingKey};
 use std::path::PathBuf;
-use zkauction_lib::PublicValuesStruct;
+use zkauction_lib::types::PublicValuesStruct;
 
 // Adjust this path based on the actual location of input.rs
 #[path = "../lib/input.rs"]
@@ -53,7 +53,7 @@ enum ProofSystem {
 struct SP1zkAuctionProofFixture {
     acc_bids_hash: String,
     acc_offers_hash: String,
-    tokens_hash: String,
+    token_prices_hash: String,
     auction_result_root: String,
     vkey: String,
     public_values: String,
@@ -105,7 +105,7 @@ fn create_proof_fixture(
     let PublicValuesStruct {
         accBidsHash,
         accOffersHash,
-        tokensHash,
+        tokenPricesHash,
         auctionResultRoot,
     } = PublicValuesStruct::abi_decode(bytes, false).unwrap();
 
@@ -113,7 +113,7 @@ fn create_proof_fixture(
     let fixture = SP1zkAuctionProofFixture {
         acc_bids_hash: accBidsHash.to_string(),
         acc_offers_hash: accOffersHash.to_string(),
-        tokens_hash: tokensHash.to_string(),
+        token_prices_hash: tokenPricesHash.to_string(),
         auction_result_root: auctionResultRoot.to_string(),
         vkey: vk.bytes32().to_string(),
         public_values: format!("0x{}", hex::encode(bytes)),

@@ -14,7 +14,7 @@ use alloy_primitives::keccak256;
 use alloy_sol_types::SolType;
 use clap::Parser;
 use sp1_sdk::{ProverClient, SP1Stdin};
-use zkauction_lib::PublicValuesStruct;
+use zkauction_lib::types::PublicValuesStruct;
 
 // Adjust this path based on the actual location of input.rs
 #[path = "../lib/input.rs"]
@@ -54,7 +54,8 @@ fn main() {
 
     // Setup the inputs.
     let mut stdin = SP1Stdin::new();
-    let (bids, offers, revealed_bids, revealed_offers, tokens) = input::set_inputs(&mut stdin);
+    let (bid_submissions, offer_submissions, bid_reveals, offer_reveals, token_prices) =
+        input::set_inputs(&mut stdin);
 
     if args.execute {
         // Execute the program
@@ -66,30 +67,30 @@ fn main() {
         let PublicValuesStruct {
             accBidsHash: acc_bids_hash,
             accOffersHash: acc_offers_hash,
-            tokensHash: tokens_hash,
+            tokenPricesHash: token_prices_hash,
             auctionResultRoot: auction_result_root,
         } = decoded;
         println!("accBidsHash: {}", acc_bids_hash);
         println!("accOffersHash: {}", acc_offers_hash);
-        println!("tokensHash: {}", tokens_hash);
+        println!("tokenPricesHash: {}", token_prices_hash);
         println!("auctionResultRoot: {}", auction_result_root);
 
         let (
             expected_acc_bids_hash,
             expected_acc_offers_hash,
-            expected_tokens_hash,
+            expected_token_prices_hash,
             expected_auction_result_root,
         ) = zkauction_lib::run_auction(
             &|x: &[u8]| keccak256(x),
-            bids,
-            offers,
-            revealed_bids,
-            revealed_offers,
-            tokens,
+            &bid_submissions,
+            &offer_submissions,
+            &bid_reveals,
+            &offer_reveals,
+            &token_prices,
         );
         assert_eq!(acc_bids_hash, expected_acc_bids_hash);
         assert_eq!(acc_offers_hash, expected_acc_offers_hash);
-        assert_eq!(tokens_hash, expected_tokens_hash);
+        assert_eq!(token_prices_hash, expected_token_prices_hash);
         assert_eq!(auction_result_root, expected_auction_result_root);
         println!("Values are correct!");
 
