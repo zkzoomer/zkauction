@@ -1,6 +1,6 @@
-use super::exit_tree::{ExitLeaf, ExitLeafWithdrawal};
+use super::exit_tree::ExitLeafWithdrawal;
 use super::utils::{add_to_hash_chain, get_key, get_price_hash};
-use super::{ChainableSubmissions, Order, PlacedOrders};
+use super::{ChainableSubmissions, Order, PlacedOrders, ValidatedOrders};
 use crate::constants::MAX_BID_PRICE;
 use alloy_primitives::{aliases::U96, Address, B256, U256};
 use alloy_sol_types::sol;
@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Represents a bid to borrow an amount of money for a specific interest rate backed by collateral.
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Bid {
     /// Unique identifier for the bid, combined with `bidder` to form a complete key.
     pub id: U96,
@@ -79,12 +79,12 @@ impl Order for Bid {
         self.is_revealed
     }
 
-    fn to_exit_leaf(&self) -> ExitLeaf {
-        ExitLeaf::Withdrawal(ExitLeafWithdrawal {
+    fn to_exit_leaf(&self) -> ExitLeafWithdrawal {
+        ExitLeafWithdrawal {
             recipient: self.bidder,
             token: self.collateral_token,
             amount: self.collateral_amount,
-        })
+        }
     }
 }
 
@@ -98,9 +98,6 @@ impl Order for Bid {
 /// # Value
 /// The value is a `Bid` struct, containing all details of the bid.
 pub type Bids = HashMap<B256, Bid>;
-
-/// A collection of all validated bids.
-pub type ValidatedBids = Vec<Bid>;
 
 impl PlacedOrders for Bids {
     type OrderSubmission = BidSubmission;
@@ -123,6 +120,17 @@ impl PlacedOrders for Bids {
                 })
                 .or_insert_with(|| Bid::from_order_submission(order_submission));
         }
+    }
+}
+
+/// A collection of all validated bids.
+pub type ValidatedBids = Vec<Bid>;
+
+impl ValidatedOrders for ValidatedBids {
+    type Order = Bid;
+
+    fn sort_orders(&mut self) {
+        self.sort_by(|a: &Bid, b: &Bid| b.bid_price_revealed.cmp(&a.bid_price_revealed));
     }
 }
 
@@ -211,12 +219,15 @@ impl ChainableSubmissions for BidReveals {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::utils::test::calculate_expected_hash_chain_output;
+    use crate::types::{
+        exit_tree::{ExitLeaf, ExitLeaves},
+        utils::test::calculate_expected_hash_chain_output,
+    };
     use alloy_primitives::keccak256;
 
     #[test]
     fn test_bid_from_order_submission() {
-        let bid_submission: BidSubmission = random_order_submission();
+        let bid_submission: BidSubmission = random_bid_submission();
 
         let bid: Bid = Bid::from_order_submission(&bid_submission);
         assert_eq!(bid.bidder, bid_submission.bidder);
@@ -230,10 +241,10 @@ mod tests {
 
     #[test]
     fn test_bid_update_from_order_submission() {
-        let bid_submission: BidSubmission = random_order_submission();
+        let bid_submission: BidSubmission = random_bid_submission();
 
         let mut bid = Bid::from_order_submission(&bid_submission);
-        let new_order_submission: BidSubmission = random_order_submission();
+        let new_order_submission: BidSubmission = random_bid_submission();
 
         bid.update_from_order_submission(&new_order_submission);
         assert_eq!(bid.amount, new_order_submission.amount);
@@ -246,7 +257,7 @@ mod tests {
         // Valid reveal
         let price: U256 = U256::from(rand::random::<u64>() % crate::constants::MAX_BID_PRICE);
         let nonce: U256 = U256::from(rand::random::<u128>());
-        let bid_submission: BidSubmission = valid_random_order_submission(&price, &nonce);
+        let bid_submission: BidSubmission = valid_random_bid_submission(&price, &nonce);
         let mut bid: Bid = Bid::from_order_submission(&bid_submission);
         bid.update_from_order_reveal(
             &|x| keccak256(x),
@@ -275,7 +286,7 @@ mod tests {
         // Valid reveal with out of bounds price
         let price: U256 = U256::from(crate::constants::MAX_BID_PRICE + 1);
         let nonce: U256 = U256::from(rand::random::<u128>());
-        let bid_submission: BidSubmission = valid_random_order_submission(&price, &nonce);
+        let bid_submission: BidSubmission = valid_random_bid_submission(&price, &nonce);
         let mut bid: Bid = Bid::from_order_submission(&bid_submission);
         bid.update_from_order_reveal(
             &|x: &[u8]| keccak256(x),
@@ -290,9 +301,29 @@ mod tests {
     }
 
     #[test]
+    fn test_bid_is_valid() {
+        let mut bid: Bid = random_revealed_bid();
+        bid.is_revealed = true;
+        assert!(bid.is_valid());
+
+        bid.is_revealed = false;
+        assert!(!bid.is_valid());
+    }
+
+    #[test]
+    fn test_bid_to_exit_leaf() {
+        let bid: Bid = random_revealed_bid();
+        let exit_leaf = bid.to_exit_leaf();
+
+        assert_eq!(exit_leaf.recipient, bid.bidder);
+        assert_eq!(exit_leaf.token, bid.collateral_token);
+        assert_eq!(exit_leaf.amount, bid.collateral_amount);
+    }
+
+    #[test]
     fn test_save_or_update_bid() {
         let mut bids: Bids = Bids::new();
-        let mut bid_submission: BidSubmission = random_order_submission();
+        let mut bid_submission: BidSubmission = random_bid_submission();
 
         // Saves the bid if new
         bids.save_or_update_order(&bid_submission);
@@ -332,7 +363,7 @@ mod tests {
         let mut expected_bids: Bids = Bids::new();
         let bid_submissions: BidSubmissions = (0..42)
             .map(|_| {
-                let bid_submission: BidSubmission = random_order_submission();
+                let bid_submission: BidSubmission = random_bid_submission();
                 expected_bids.save_or_update_order(&bid_submission);
                 bid_submission
             })
@@ -359,7 +390,7 @@ mod tests {
                 let price: U256 =
                     U256::from(rand::random::<u64>() % crate::constants::MAX_BID_PRICE);
                 let nonce: U256 = U256::from(rand::random::<u128>());
-                let bid_submission: BidSubmission = valid_random_order_submission(&price, &nonce);
+                let bid_submission: BidSubmission = valid_random_bid_submission(&price, &nonce);
                 expected_bids.save_or_update_order(&bid_submission);
                 bid_reveals.push(BidReveal {
                     orderId: get_key(&bid_submission.bidder, &bid_submission.id).into(),
@@ -387,9 +418,52 @@ mod tests {
         assert_eq!(expected_bids, bids);
     }
 
+    #[test]
+    fn test_validate_bids() {
+        let mut placed_bids: Bids = Bids::new();
+        let mut exit_leaves: ExitLeaves = ExitLeaves::new();
+        let revealed_bid: Bid = random_revealed_bid();
+        // TODO: let undercollateralized_bid = random_undercollateralized_bid();
+        let non_revealed_bid: Bid = random_non_revealed_bid();
+
+        placed_bids.insert(
+            get_key(&revealed_bid.bidder, &revealed_bid.id),
+            revealed_bid.clone(),
+        );
+        placed_bids.insert(
+            get_key(&non_revealed_bid.bidder, &non_revealed_bid.id),
+            non_revealed_bid.clone(),
+        );
+        // TODO: placed_bids.insert(get_key(&undercollateralized_bid.bidder, &undercollateralized_bid.id), undercollateralized_bid.clone());
+
+        let validated_bids = placed_bids.into_validated_orders(&mut exit_leaves);
+
+        assert_eq!(validated_bids.len(), 1);
+        assert_eq!(exit_leaves.len(), 1);
+        // TODO: assert_eq!(exit_leaves.len(), 2);
+        assert_eq!(validated_bids[0], revealed_bid);
+        assert_eq!(
+            exit_leaves[0],
+            ExitLeaf::Withdrawal(non_revealed_bid.to_exit_leaf())
+        );
+        // TODO: assert_eq!(exit_leaves[1], ExitLeaf::Withdrawal(undercollateralized_bid.to_exit_leaf()));
+    }
+
+    #[test]
+    fn test_validated_bids_sort_orders() {
+        let mut bids: ValidatedBids = vec![
+            random_revealed_bid(),
+            random_revealed_bid(),
+            random_revealed_bid(),
+        ];
+        bids.sort_orders();
+        assert!(bids[0].bid_price_revealed >= bids[1].bid_price_revealed);
+        assert!(bids[1].bid_price_revealed >= bids[2].bid_price_revealed);
+    }
+
     // HELPER FUNCTIONS
     /// Creates a new BidSubmission with random values for testing purposes.
-    fn random_order_submission() -> BidSubmission {
+    fn random_bid_submission() -> BidSubmission {
         BidSubmission {
             bidder: Address::random(),
             id: U96::from(rand::random::<u64>()),
@@ -402,7 +476,7 @@ mod tests {
     }
 
     /// Creates a random BidSubmission with a valid bid price hash for the given price and nonce.
-    fn valid_random_order_submission(price: &U256, nonce: &U256) -> BidSubmission {
+    fn valid_random_bid_submission(price: &U256, nonce: &U256) -> BidSubmission {
         BidSubmission {
             bidder: Address::random(),
             id: U96::from(rand::random::<u64>()),
@@ -411,6 +485,40 @@ mod tests {
             collateralAmount: U256::from(rand::random::<u128>()),
             purchaseToken: Address::random(),
             collateralToken: Address::random(),
+        }
+    }
+
+    /// Creates a random non-revealed Bid.
+    pub fn random_non_revealed_bid() -> Bid {
+        Bid {
+            id: U96::from(rand::random::<u64>()),
+            bidder: Address::random(),
+            bid_price_hash: B256::random(),
+            bid_price_revealed: U256::from(rand::random::<u64>() % crate::constants::MAX_BID_PRICE),
+            amount: U256::from(rand::random::<u128>()),
+            collateral_amount: U256::from(rand::random::<u128>()),
+            purchase_token: Address::random(),
+            collateral_token: Address::random(),
+            is_rollover: false,
+            rollover_pair_off_term_repo_servicer: Address::ZERO,
+            is_revealed: false,
+        }
+    }
+
+    /// Creates a random revealed Bid.
+    pub fn random_revealed_bid() -> Bid {
+        Bid {
+            id: U96::from(rand::random::<u64>()),
+            bidder: Address::random(),
+            bid_price_hash: B256::random(),
+            bid_price_revealed: U256::from(rand::random::<u64>() % crate::constants::MAX_BID_PRICE),
+            amount: U256::from(rand::random::<u128>()),
+            collateral_amount: U256::from(rand::random::<u128>()),
+            purchase_token: Address::random(),
+            collateral_token: Address::random(),
+            is_rollover: false,
+            rollover_pair_off_term_repo_servicer: Address::ZERO,
+            is_revealed: true,
         }
     }
 

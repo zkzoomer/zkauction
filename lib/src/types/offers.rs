@@ -1,6 +1,6 @@
-use super::exit_tree::{ExitLeaf, ExitLeafWithdrawal};
+use super::exit_tree::ExitLeafWithdrawal;
 use super::utils::{add_to_hash_chain, get_key, get_price_hash};
-use super::{ChainableSubmissions, Order, PlacedOrders};
+use super::{ChainableSubmissions, Order, PlacedOrders, ValidatedOrders};
 use crate::constants::MAX_OFFER_PRICE;
 use alloy_primitives::{aliases::U96, Address, B256, U256};
 use alloy_sol_types::sol;
@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Represents an offer to lend an amount of money for a specific interest rate.
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Offer {
     /// Unique identifier for the offer, combined with `offeror` to form a complete key.
     pub id: U96,
@@ -65,12 +65,12 @@ impl Order for Offer {
         self.is_revealed
     }
 
-    fn to_exit_leaf(&self) -> ExitLeaf {
-        ExitLeaf::Withdrawal(ExitLeafWithdrawal {
+    fn to_exit_leaf(&self) -> ExitLeafWithdrawal {
+        ExitLeafWithdrawal {
             recipient: self.offeror,
             token: self.purchase_token,
             amount: self.amount,
-        })
+        }
     }
 }
 
@@ -84,9 +84,6 @@ impl Order for Offer {
 /// # Value
 /// The value is a `Offer` struct, containing all details of the offer.
 pub type Offers = HashMap<B256, Offer>;
-
-/// A collection of all validated offers.
-pub type ValidatedOffers = Vec<Offer>;
 
 impl PlacedOrders for Offers {
     type OrderSubmission = OfferSubmission;
@@ -192,15 +189,29 @@ impl ChainableSubmissions for OfferReveals {
     }
 }
 
+/// A collection of all validated offers.
+pub type ValidatedOffers = Vec<Offer>;
+
+impl ValidatedOrders for ValidatedOffers {
+    type Order = Offer;
+
+    fn sort_orders(&mut self) {
+        self.sort_by(|a: &Offer, b: &Offer| a.offer_price_revealed.cmp(&b.offer_price_revealed));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::utils::test::calculate_expected_hash_chain_output;
+    use crate::types::{
+        exit_tree::{ExitLeaf, ExitLeaves},
+        utils::test::calculate_expected_hash_chain_output,
+    };
     use alloy_primitives::keccak256;
 
     #[test]
     fn test_offer_from_order_submission() {
-        let offer_submission: OfferSubmission = random_order_submission();
+        let offer_submission: OfferSubmission = random_offer_submission();
 
         let offer: Offer = Offer::from_order_submission(&offer_submission);
         assert_eq!(offer.offeror, offer_submission.offeror);
@@ -212,10 +223,10 @@ mod tests {
 
     #[test]
     fn test_offer_update_from_order_submission() {
-        let offer_submission: OfferSubmission = random_order_submission();
+        let offer_submission: OfferSubmission = random_offer_submission();
 
         let mut offer: Offer = Offer::from_order_submission(&offer_submission);
-        let new_order_submission: OfferSubmission = random_order_submission();
+        let new_order_submission: OfferSubmission = random_offer_submission();
 
         offer.update_from_order_submission(&new_order_submission);
         assert_eq!(offer.amount, new_order_submission.amount);
@@ -227,7 +238,7 @@ mod tests {
         // Valid reveal
         let price: U256 = U256::from(rand::random::<u64>() % crate::constants::MAX_OFFER_PRICE);
         let nonce: U256 = U256::from(rand::random::<u128>());
-        let offer_submission: OfferSubmission = valid_random_order_submission(&price, &nonce);
+        let offer_submission: OfferSubmission = valid_random_offer_submission(&price, &nonce);
         let mut offer: Offer = Offer::from_order_submission(&offer_submission);
         offer.update_from_order_reveal(
             &|x| keccak256(x),
@@ -256,7 +267,7 @@ mod tests {
         // Invalid reveal with out of bounds price
         let price: U256 = U256::from(crate::constants::MAX_OFFER_PRICE + 1);
         let nonce: U256 = U256::from(rand::random::<u128>());
-        let offer_submission: OfferSubmission = valid_random_order_submission(&price, &nonce);
+        let offer_submission: OfferSubmission = valid_random_offer_submission(&price, &nonce);
         let mut offer = Offer::from_order_submission(&offer_submission);
         offer.update_from_order_reveal(
             &|x: &[u8]| keccak256(x),
@@ -271,9 +282,29 @@ mod tests {
     }
 
     #[test]
+    fn test_offer_is_valid() {
+        let mut offer: Offer = random_revealed_offer();
+        offer.is_revealed = true;
+        assert!(offer.is_valid());
+
+        offer.is_revealed = false;
+        assert!(!offer.is_valid());
+    }
+
+    #[test]
+    fn test_offer_to_exit_leaf() {
+        let offer: Offer = random_revealed_offer();
+        let exit_leaf = offer.to_exit_leaf();
+
+        assert_eq!(exit_leaf.recipient, offer.offeror);
+        assert_eq!(exit_leaf.token, offer.purchase_token);
+        assert_eq!(exit_leaf.amount, offer.amount);
+    }
+
+    #[test]
     fn test_save_or_update_offer() {
         let mut offers: Offers = Offers::new();
-        let mut offer_submission: OfferSubmission = random_order_submission();
+        let mut offer_submission: OfferSubmission = random_offer_submission();
 
         // Saves the offer if new
         offers.save_or_update_order(&offer_submission);
@@ -314,7 +345,7 @@ mod tests {
         let mut expected_offers: Offers = Offers::new();
         let offer_submissions: OfferSubmissions = (0..42)
             .map(|_| {
-                let offer_submission: OfferSubmission = random_order_submission();
+                let offer_submission: OfferSubmission = random_offer_submission();
                 expected_offers.save_or_update_order(&offer_submission);
                 offer_submission
             })
@@ -342,7 +373,7 @@ mod tests {
                     U256::from(rand::random::<u64>() % crate::constants::MAX_OFFER_PRICE);
                 let nonce: U256 = U256::from(rand::random::<u128>());
                 let offer_submission: OfferSubmission =
-                    valid_random_order_submission(&price, &nonce);
+                    valid_random_offer_submission(&price, &nonce);
                 expected_offers.save_or_update_order(&offer_submission);
                 offer_reveals.push(OfferReveal {
                     orderId: get_key(&offer_submission.offeror, &offer_submission.id).into(),
@@ -370,9 +401,48 @@ mod tests {
         assert_eq!(expected_offers, offers);
     }
 
+    #[test]
+    fn test_validate_offers() {
+        let mut placed_offers: Offers = Offers::new();
+        let mut exit_leaves: ExitLeaves = ExitLeaves::new();
+        let revealed_offer: Offer = random_revealed_offer();
+        let non_revealed_offer: Offer = random_non_revealed_offer();
+
+        placed_offers.insert(
+            get_key(&revealed_offer.offeror, &revealed_offer.id),
+            revealed_offer.clone(),
+        );
+        placed_offers.insert(
+            get_key(&non_revealed_offer.offeror, &non_revealed_offer.id),
+            non_revealed_offer.clone(),
+        );
+
+        let validated_offers = placed_offers.into_validated_orders(&mut exit_leaves);
+
+        assert_eq!(validated_offers.len(), 1);
+        assert_eq!(exit_leaves.len(), 1);
+        assert_eq!(validated_offers[0], revealed_offer);
+        assert_eq!(
+            exit_leaves[0],
+            ExitLeaf::Withdrawal(non_revealed_offer.to_exit_leaf())
+        );
+    }
+
+    #[test]
+    fn test_validated_offers_sort_orders() {
+        let mut offers: ValidatedOffers = vec![
+            random_revealed_offer(),
+            random_revealed_offer(),
+            random_revealed_offer(),
+        ];
+        offers.sort_orders();
+        assert!(offers[0].offer_price_revealed <= offers[1].offer_price_revealed);
+        assert!(offers[1].offer_price_revealed <= offers[2].offer_price_revealed);
+    }
+
     // HELPER FUNCTIONS
     /// Creates a new OfferSubmission with random values for testing purposes.
-    fn random_order_submission() -> OfferSubmission {
+    fn random_offer_submission() -> OfferSubmission {
         OfferSubmission {
             offeror: Address::random(),
             id: U96::from(rand::random::<u64>()),
@@ -383,13 +453,41 @@ mod tests {
     }
 
     /// Creates a random OfferSubmission with a valid offer price hash for the given price and nonce.
-    fn valid_random_order_submission(price: &U256, nonce: &U256) -> OfferSubmission {
+    fn valid_random_offer_submission(price: &U256, nonce: &U256) -> OfferSubmission {
         OfferSubmission {
             offeror: Address::random(),
             id: U96::from(rand::random::<u64>()),
             offerPriceHash: get_price_hash(&|x| keccak256(x), price, nonce),
             amount: U256::from(rand::random::<u128>()),
             purchaseToken: Address::random(),
+        }
+    }
+
+    /// Creates a random revealed Offer.
+    fn random_revealed_offer() -> Offer {
+        Offer {
+            id: U96::from(rand::random::<u64>()),
+            offeror: Address::random(),
+            offer_price_hash: B256::random(),
+            offer_price_revealed: U256::from(
+                rand::random::<u64>() % crate::constants::MAX_OFFER_PRICE,
+            ),
+            amount: U256::from(rand::random::<u128>()),
+            purchase_token: Address::random(),
+            is_revealed: true,
+        }
+    }
+
+    /// Creates a random non-revealed Offer.
+    fn random_non_revealed_offer() -> Offer {
+        Offer {
+            id: U96::from(rand::random::<u64>()),
+            offeror: Address::random(),
+            offer_price_hash: B256::random(),
+            offer_price_revealed: U256::ZERO,
+            amount: U256::from(rand::random::<u128>()),
+            purchase_token: Address::random(),
+            is_revealed: false,
         }
     }
 

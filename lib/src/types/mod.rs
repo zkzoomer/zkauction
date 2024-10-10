@@ -4,7 +4,8 @@ pub mod offers;
 pub mod tokens;
 pub mod utils;
 use alloy_primitives::B256;
-use alloy_sol_types::{sol, SolValue};
+use alloy_sol_types::sol;
+use exit_tree::{ExitLeaf, ExitLeafWithdrawal, ExitLeaves};
 use std::collections::HashMap;
 
 sol! {
@@ -52,7 +53,8 @@ pub trait UnrollableStructs {
     fn hash_together<F: Fn(&[u8]) -> B256>(&self, hash_function: &F) -> B256;
 }
 
-pub trait PlacedOrders {
+/// Trait for placed orders mappings.
+pub trait PlacedOrders: IntoIterator<Item = (B256, Self::Order)> + Sized {
     type OrderSubmission;
     type Order: Order;
 
@@ -64,15 +66,28 @@ pub trait PlacedOrders {
     /// * `order_submission` - A reference to the `OrderSubmission` containing the order details.
     fn save_or_update_order(&mut self, order_submission: &Self::OrderSubmission);
 
-    fn validate_orders(
-        &self,
-        token_map: &tokens::TokenMap,
-        exit_leaves: &exit_tree::ExitLeaves,
-    ) -> Vec<Self::Order> {
-        vec![]
+    /// Validates orders and returns a vector of valid orders.
+    ///
+    /// # Arguments
+    ///
+    /// * `orders` - The orders mapping to validate.
+    /// * `exit_leaves` - The exit leaves to add invalid orders to.
+    fn into_validated_orders(self, exit_leaves: &mut ExitLeaves) -> Vec<Self::Order> {
+        let mut valid_orders = Vec::new();
+
+        for (_, order) in self.into_iter() {
+            if order.is_valid() {
+                valid_orders.push(order);
+            } else {
+                exit_leaves.push(ExitLeaf::Withdrawal(order.to_exit_leaf()));
+            }
+        }
+
+        valid_orders
     }
 }
 
+/// Trait for orders.
 pub trait Order {
     type OrderSubmission;
     type OrderReveal;
@@ -117,7 +132,19 @@ pub trait Order {
     /// # Arguments
     ///
     /// * `self` - The order being converted.
-    fn to_exit_leaf(&self) -> exit_tree::ExitLeaf;
+    fn to_exit_leaf(&self) -> ExitLeafWithdrawal;
 }
 
-pub trait OrdersMapping {}
+/// Type alias for orders mapping.
+pub type Orders<T> = HashMap<B256, T>;
+
+pub trait ValidatedOrders {
+    type Order;
+
+    /// Appropriately sorts the orders by revealed price.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The orders being sorted.
+    fn sort_orders(&mut self);
+}
