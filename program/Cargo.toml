@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-alloy-sol-types.workspace = true
+alloy-primitives = { workspace = true }
+alloy-sol-types = { workspace = true }
 sp1-zkvm = "2.0.0"
 zkauction-lib = { path = "../lib" }
