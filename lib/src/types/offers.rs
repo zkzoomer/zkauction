@@ -5,7 +5,7 @@ use crate::constants::MAX_OFFER_PRICE;
 use alloy_primitives::{aliases::U96, Address, B256, U256};
 use alloy_sol_types::sol;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Represents an offer to lend an amount of money for a specific interest rate.
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -83,7 +83,7 @@ impl Order for Offer {
 ///
 /// # Value
 /// The value is a `Offer` struct, containing all details of the offer.
-pub type Offers = HashMap<B256, Offer>;
+pub type Offers = BTreeMap<B256, Offer>;
 
 impl PlacedOrders for Offers {
     type OrderSubmission = OfferSubmission;

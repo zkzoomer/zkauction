@@ -5,7 +5,7 @@ use crate::constants::MAX_BID_PRICE;
 use alloy_primitives::{aliases::U96, Address, B256, U256};
 use alloy_sol_types::sol;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Represents a bid to borrow an amount of money for a specific interest rate backed by collateral.
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -97,7 +97,7 @@ impl Order for Bid {
 ///
 /// # Value
 /// The value is a `Bid` struct, containing all details of the bid.
-pub type Bids = HashMap<B256, Bid>;
+pub type Bids = BTreeMap<B256, Bid>;
 
 impl PlacedOrders for Bids {
     type OrderSubmission = BidSubmission;

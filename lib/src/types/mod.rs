@@ -6,7 +6,7 @@ pub mod utils;
 use alloy_primitives::B256;
 use alloy_sol_types::sol;
 use exit_tree::{ExitLeaf, ExitLeafWithdrawal, ExitLeaves};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 sol! {
     /// The public values encoded as a struct that can be easily deserialized inside Solidity.
@@ -34,12 +34,12 @@ pub trait ChainableSubmissions {
     /// * `self` - The `T` instance containing all orders placed onchain.
     /// * `hash_function` - A function that computes a 32-byte hash from a byte slice.
     /// * `start_value` - The initial 32-byte value to start the hash chain.
-    /// * `orders` - A mutable reference to the `T` HashMap where all orders will be updated.
+    /// * `orders` - A mutable reference to the `T` BTreeMap where all orders will be updated.
     fn hash_chain<F>(
         &self,
         hash_function: &F,
         start_value: B256,
-        orders: &mut HashMap<B256, Self::T>,
+        orders: &mut BTreeMap<B256, Self::T>,
     ) -> B256
     where
         F: Fn(&[u8]) -> B256;
@@ -64,7 +64,7 @@ pub trait PlacedOrders: IntoIterator<Item = (B256, Self::Order)> + Sized {
     ///
     /// # Arguments
     ///
-    /// * `self` - A mutable reference to the `Orders` collection (HashMap) to modify.
+    /// * `self` - A mutable reference to the `Orders` collection (BTreeMap) to modify.
     /// * `order_submission` - A reference to the `OrderSubmission` containing the order details.
     fn save_or_update_order(&mut self, order_submission: &Self::OrderSubmission);
 
@@ -138,7 +138,7 @@ pub trait Order {
 }
 
 /// Type alias for orders mapping.
-pub type Orders<T> = HashMap<B256, T>;
+pub type Orders<T> = BTreeMap<B256, T>;
 
 pub trait ValidatedOrders {
     type Order;

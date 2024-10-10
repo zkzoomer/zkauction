@@ -2,7 +2,7 @@ use crate::types::UnrollableStructs;
 use alloy_primitives::{Address, B256, U256};
 use alloy_sol_types::{sol, SolValue};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 sol! {
     /// A `TokenPrice` represents a given ERC-20 token address and its oracle price at proof verification time
@@ -40,7 +40,7 @@ impl UnrollableStructs for TokenPrices {
 }
 
 /// A map of token addresses to their prices.
-pub type TokenMap = HashMap<Address, U256>;
+pub type TokenMap = BTreeMap<Address, U256>;
 
 pub trait IntoTokenMap {
     fn to_token_map(&self) -> TokenMap;
