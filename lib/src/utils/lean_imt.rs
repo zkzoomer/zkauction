@@ -15,7 +15,7 @@ pub struct LeanIncrementalMerkleTree {
 impl Default for LeanIncrementalMerkleTree {
     /// Creates a new, empty `LeanIncrementalMerkleTree`.
     fn default() -> Self {
-        Self::new(&vec![])
+        Self::new(&[])
     }
 }
 
@@ -44,7 +44,7 @@ impl LeanIncrementalMerkleTree {
     /// # Returns
     ///
     /// A new `LeanIncrementalMerkleTree` instance.
-    pub fn new(leaves: &Vec<B256>) -> Self {
+    pub fn new(leaves: &[B256]) -> Self {
         let mut tree: LeanIncrementalMerkleTree = Self {
             nodes: vec![vec![]],
         };
@@ -112,9 +112,9 @@ impl LeanIncrementalMerkleTree {
     /// # Arguments
     ///
     /// * `leaves` - A vector of leaf hashes to insert into the tree.
-    fn insert_many(&mut self, leaves: &Vec<B256>) {
+    fn insert_many(&mut self, leaves: &[B256]) {
         let mut start_index: usize = self.size() >> 1;
-        self.nodes[0].extend_from_slice(&leaves);
+        self.nodes[0].extend_from_slice(leaves);
 
         let new_levels: usize =
             ((self.size() as f64).log2().ceil() as usize).saturating_sub(self.depth());
@@ -228,7 +228,7 @@ mod test {
 
     #[test]
     fn test_initializes_empty_tree() {
-        let tree: LeanIncrementalMerkleTree = LeanIncrementalMerkleTree::new(&vec![]);
+        let tree: LeanIncrementalMerkleTree = LeanIncrementalMerkleTree::new(&[]);
         assert_eq!(tree.root(), B256::default());
     }
 
