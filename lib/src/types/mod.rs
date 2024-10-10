@@ -11,6 +11,8 @@ use std::collections::HashMap;
 sol! {
     /// The public values encoded as a struct that can be easily deserialized inside Solidity.
     struct PublicValuesStruct {
+        /// Address of the prover
+        address proverAddress;
         /// Reconstructed hash chain of all bids placed and revealed onchain
         bytes32 accBidsHash;
         /// Reconstructed hash chain of all offers placed and revealed onchain

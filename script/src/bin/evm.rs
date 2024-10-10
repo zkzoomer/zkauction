@@ -51,6 +51,7 @@ enum ProofSystem {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SP1zkAuctionProofFixture {
+    prover_address: String,
     acc_bids_hash: String,
     acc_offers_hash: String,
     token_prices_hash: String,
@@ -69,7 +70,14 @@ fn main() {
 
     // Setup the inputs.
     let mut stdin = SP1Stdin::new();
-    let (_bids, _offers, _revealed_bids, _revealed_offers, _tokens) = input::set_inputs(&mut stdin);
+    let (
+        _prover_address,
+        _bids_submissions,
+        _offers_submissions,
+        _bid_reveals,
+        _offer_reveals,
+        _tokens_prices,
+    ) = input::set_inputs(&mut stdin);
 
     let proof_system = ProofSystem::Plonk;
 
@@ -103,6 +111,7 @@ fn create_proof_fixture(
     let bytes = proof.public_values.as_slice();
 
     let PublicValuesStruct {
+        proverAddress,
         accBidsHash,
         accOffersHash,
         tokenPricesHash,
@@ -111,6 +120,7 @@ fn create_proof_fixture(
 
     // Create the testing fixture so we can test things end-to-end.
     let fixture = SP1zkAuctionProofFixture {
+        prover_address: proverAddress.to_string(),
         acc_bids_hash: accBidsHash.to_string(),
         acc_offers_hash: accOffersHash.to_string(),
         token_prices_hash: tokenPricesHash.to_string(),

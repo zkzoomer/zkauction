@@ -10,6 +10,7 @@ use zkauction_lib::types::{
 pub fn set_inputs(
     stdin: &mut SP1Stdin,
 ) -> (
+    Address,
     BidSubmissions,
     OfferSubmissions,
     BidReveals,
@@ -19,6 +20,7 @@ pub fn set_inputs(
     let num_offers: i32 = 10;
     let num_tokens: i32 = 2;
 
+    let prover_address = Address::random();
     let bid_submissions: BidSubmissions = (0..num_offers)
         .map(|_| BidSubmission {
             bidder: Address::random(),
@@ -60,6 +62,7 @@ pub fn set_inputs(
         })
         .collect();
 
+    stdin.write(&prover_address);
     stdin.write(&bid_submissions);
     stdin.write(&offer_submissions);
     stdin.write(&bid_reveals);
@@ -67,6 +70,7 @@ pub fn set_inputs(
     stdin.write(&tokens);
 
     (
+        prover_address,
         bid_submissions,
         offer_submissions,
         bid_reveals,

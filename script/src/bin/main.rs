@@ -54,8 +54,14 @@ fn main() {
 
     // Setup the inputs.
     let mut stdin = SP1Stdin::new();
-    let (bid_submissions, offer_submissions, bid_reveals, offer_reveals, token_prices) =
-        input::set_inputs(&mut stdin);
+    let (
+        _prover_address,
+        bid_submissions,
+        offer_submissions,
+        bid_reveals,
+        offer_reveals,
+        token_prices,
+    ) = input::set_inputs(&mut stdin);
 
     if args.execute {
         // Execute the program
@@ -65,11 +71,13 @@ fn main() {
         // Read the output.
         let decoded = PublicValuesStruct::abi_decode(output.as_slice(), true).unwrap();
         let PublicValuesStruct {
+            proverAddress: prover_address,
             accBidsHash: acc_bids_hash,
             accOffersHash: acc_offers_hash,
             tokenPricesHash: token_prices_hash,
             auctionResultRoot: auction_result_root,
         } = decoded;
+        println!("proverAddress: {}", prover_address);
         println!("accBidsHash: {}", acc_bids_hash);
         println!("accOffersHash: {}", acc_offers_hash);
         println!("tokenPricesHash: {}", token_prices_hash);

@@ -5,6 +5,7 @@
 #![no_main]
 sp1_zkvm::entrypoint!(main);
 
+use alloy_primitives::Address;
 use alloy_sol_types::SolType;
 use zkauction_lib::precompiles::sp1_keccak256;
 use zkauction_lib::types::bids::{BidReveals, BidSubmissions};
@@ -17,6 +18,8 @@ use zkauction_lib::{run_auction, types::PublicValuesStruct};
 pub fn main() {
     // Reading inputs to the program. Behind the scenes, this compiles down to a custom system call
     // which handles reading inputs from the prover.
+    // Read the address of the prover
+    let prover_address: Address = sp1_zkvm::io::read::<Address>();
     // Read placed orders
     let bid_submissions: BidSubmissions = sp1_zkvm::io::read::<BidSubmissions>();
     let offer_submissions: OfferSubmissions = sp1_zkvm::io::read::<OfferSubmissions>();
@@ -38,6 +41,7 @@ pub fn main() {
 
     // Encode the public values of the program.
     let bytes = PublicValuesStruct::abi_encode(&PublicValuesStruct {
+        proverAddress: prover_address,
         accBidsHash: acc_bids_hash,
         accOffersHash: acc_offers_hash,
         tokenPricesHash: token_prices_hash,
