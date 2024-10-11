@@ -7,6 +7,7 @@ use alloy_primitives::B256;
 use alloy_sol_types::sol;
 use exit_tree::{ExitLeaf, ExitLeafWithdrawal, ExitLeaves};
 use std::collections::BTreeMap;
+use tokens::TokenMap;
 
 sol! {
     /// The public values encoded as a struct that can be easily deserialized inside Solidity.
@@ -73,12 +74,17 @@ pub trait PlacedOrders: IntoIterator<Item = (B256, Self::Order)> + Sized {
     /// # Arguments
     ///
     /// * `orders` - The orders mapping to validate.
+    /// * `token_map` - The token map to check against.
     /// * `exit_leaves` - The exit leaves to add invalid orders to.
-    fn into_validated_orders(self, exit_leaves: &mut ExitLeaves) -> Vec<Self::Order> {
+    fn into_validated_orders(
+        self,
+        token_map: &TokenMap,
+        exit_leaves: &mut ExitLeaves,
+    ) -> Vec<Self::Order> {
         let mut valid_orders = Vec::new();
 
         for (_, order) in self.into_iter() {
-            if order.is_valid() {
+            if order.is_valid(token_map) {
                 valid_orders.push(order);
             } else {
                 exit_leaves.push(ExitLeaf::Withdrawal(order.to_exit_leaf()));
@@ -127,7 +133,8 @@ pub trait Order {
     /// # Arguments
     ///
     /// * `self` - The order being checked.
-    fn is_valid(&self) -> bool;
+    /// * `token_map` - The token map to check against.
+    fn is_valid(&self, token_map: &TokenMap) -> bool;
 
     /// Converts the order to an exit leaf.
     ///

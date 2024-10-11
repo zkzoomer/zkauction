@@ -1,4 +1,5 @@
 use super::exit_tree::ExitLeafWithdrawal;
+use super::tokens::TokenMap;
 use super::utils::{add_to_hash_chain, get_key, get_price_hash};
 use super::{ChainableSubmissions, Order, PlacedOrders, ValidatedOrders};
 use crate::constants::MAX_OFFER_PRICE;
@@ -61,7 +62,7 @@ impl Order for Offer {
         }
     }
 
-    fn is_valid(&self) -> bool {
+    fn is_valid(&self, _token_map: &TokenMap) -> bool {
         self.is_revealed
     }
 
@@ -285,10 +286,10 @@ mod tests {
     fn test_offer_is_valid() {
         let mut offer: Offer = random_revealed_offer();
         offer.is_revealed = true;
-        assert!(offer.is_valid());
+        assert!(offer.is_valid(&TokenMap::new()));
 
         offer.is_revealed = false;
-        assert!(!offer.is_valid());
+        assert!(!offer.is_valid(&TokenMap::new()));
     }
 
     #[test]
@@ -417,7 +418,8 @@ mod tests {
             non_revealed_offer.clone(),
         );
 
-        let validated_offers = placed_offers.into_validated_orders(&mut exit_leaves);
+        let validated_offers =
+            placed_offers.into_validated_orders(&TokenMap::new(), &mut exit_leaves);
 
         assert_eq!(validated_offers.len(), 1);
         assert_eq!(exit_leaves.len(), 1);

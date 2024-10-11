@@ -51,14 +51,16 @@ pub fn run_auction<F: Fn(&[u8]) -> B256>(
 
     // Compute the hash of the information of the tokens involved in the auction
     let token_prices_hash: B256 = token_prices.hash_together(hash_function);
-    let _token_map: TokenMap = token_prices.to_token_map();
+    let token_map: TokenMap = token_prices.to_token_map();
 
     // Define the exit leaves
     let mut exit_leaves: ExitLeaves = ExitLeaves::new();
 
     // Get validated bids and offers
-    let mut validated_bids: ValidatedBids = bids.into_validated_orders(&mut exit_leaves);
-    let mut validated_offers: ValidatedOffers = offers.into_validated_orders(&mut exit_leaves);
+    let mut validated_bids: ValidatedBids =
+        bids.into_validated_orders(&token_map, &mut exit_leaves);
+    let mut validated_offers: ValidatedOffers =
+        offers.into_validated_orders(&token_map, &mut exit_leaves);
 
     // Sort validated bids by descending price
     validated_bids.sort_orders();
