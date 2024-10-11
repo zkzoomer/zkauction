@@ -192,7 +192,7 @@ impl ValidatedOrders for ValidatedOffers {
     type Order = Offer;
 
     fn sort_orders(&mut self) {
-        self.sort_by(|a: &Offer, b: &Offer| a.offer_price_revealed.cmp(&b.offer_price_revealed));
+        self.sort_by(|a: &Offer, b: &Offer| b.offer_price_revealed.cmp(&a.offer_price_revealed));
     }
 }
 
@@ -433,8 +433,8 @@ mod tests {
             random_revealed_offer(),
         ];
         offers.sort_orders();
-        assert!(offers[0].offer_price_revealed <= offers[1].offer_price_revealed);
-        assert!(offers[1].offer_price_revealed <= offers[2].offer_price_revealed);
+        assert!(offers[0].offer_price_revealed >= offers[1].offer_price_revealed);
+        assert!(offers[1].offer_price_revealed >= offers[2].offer_price_revealed);
     }
 
     // HELPER FUNCTIONS

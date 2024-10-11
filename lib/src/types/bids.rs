@@ -136,7 +136,7 @@ impl ValidatedOrders for ValidatedBids {
     type Order = Bid;
 
     fn sort_orders(&mut self) {
-        self.sort_by(|a: &Bid, b: &Bid| b.bid_price_revealed.cmp(&a.bid_price_revealed));
+        self.sort_by(|a: &Bid, b: &Bid| a.bid_price_revealed.cmp(&b.bid_price_revealed));
     }
 }
 
@@ -475,8 +475,8 @@ mod tests {
             random_revealed_bid(),
         ];
         bids.sort_orders();
-        assert!(bids[0].bid_price_revealed >= bids[1].bid_price_revealed);
-        assert!(bids[1].bid_price_revealed >= bids[2].bid_price_revealed);
+        assert!(bids[0].bid_price_revealed <= bids[1].bid_price_revealed);
+        assert!(bids[1].bid_price_revealed <= bids[2].bid_price_revealed);
     }
 
     // HELPER FUNCTIONS
