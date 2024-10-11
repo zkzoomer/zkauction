@@ -10,7 +10,7 @@ use alloy_sol_types::SolType;
 use zkauction_lib::precompiles::sp1_keccak256;
 use zkauction_lib::types::bids::{BidReveals, BidSubmissions};
 use zkauction_lib::types::offers::{OfferReveals, OfferSubmissions};
-use zkauction_lib::types::tokens::TokenPrices;
+use zkauction_lib::types::tokens::Tokens;
 use zkauction_lib::{run_auction, types::PublicValuesStruct};
 
 /// The main function of the program, reads the auction inputs, computes the auction results commitment,
@@ -27,7 +27,7 @@ pub fn main() {
     let bid_reveals: BidReveals = sp1_zkvm::io::read::<BidReveals>();
     let offer_reveals: OfferReveals = sp1_zkvm::io::read::<OfferReveals>();
     // Read token information at the time of proof verification
-    let token_prices: TokenPrices = sp1_zkvm::io::read::<TokenPrices>();
+    let token_prices: Tokens = sp1_zkvm::io::read::<Tokens>();
 
     // Compute public values encoding the auction and its results
     let (acc_bids_hash, acc_offers_hash, token_prices_hash, auction_result_root) = run_auction(

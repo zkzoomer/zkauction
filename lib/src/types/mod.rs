@@ -4,10 +4,10 @@ pub mod offers;
 pub mod tokens;
 pub mod utils;
 use alloy_primitives::B256;
-use alloy_sol_types::sol;
-use exit_tree::{ExitLeaf, ExitLeafWithdrawal, ExitLeaves};
+use alloy_sol_types::{sol, SolValue};
+use exit_tree::{ExitLeaf, ExitLeafTokenWithdrawal, ExitLeaves};
 use std::collections::BTreeMap;
-use tokens::TokenMap;
+use tokens::Tokens;
 
 sol! {
     /// The public values encoded as a struct that can be easily deserialized inside Solidity.
@@ -46,14 +46,17 @@ pub trait ChainableSubmissions {
         F: Fn(&[u8]) -> B256;
 }
 
-/// Trait for types that can be "unrolled" at once into a single `abi.encodePacked`-able value.
-pub trait UnrollableStructs {
-    /// Computes a single hash value from the implementing type's fields.
+/// Trait for Solidity structs that can be hashed via first calling `abi.encodePacked`.
+pub trait HashableStruct: SolValue {
+    /// Computes a single hash value from the struct's fields by first calling `abi.encodePacked`.
     ///
     /// # Arguments
     ///
+    /// * `self` - The struct to hash.
     /// * `hash_function` - A function that computes a 32-byte hash from a byte slice.
-    fn hash_together<F: Fn(&[u8]) -> B256>(&self, hash_function: &F) -> B256;
+    fn hash<F: Fn(&[u8]) -> B256>(&self, hash_function: &F) -> B256 {
+        hash_function(&self.abi_encode_packed())
+    }
 }
 
 /// Trait for placed orders mappings.
@@ -74,20 +77,20 @@ pub trait PlacedOrders: IntoIterator<Item = (B256, Self::Order)> + Sized {
     /// # Arguments
     ///
     /// * `orders` - The orders mapping to validate.
-    /// * `token_map` - The token map to check against.
+    /// * `tokens` - The tokens to check against.
     /// * `exit_leaves` - The exit leaves to add invalid orders to.
     fn into_validated_orders(
         self,
-        token_map: &TokenMap,
+        tokens: &Tokens,
         exit_leaves: &mut ExitLeaves,
     ) -> Vec<Self::Order> {
         let mut valid_orders = Vec::new();
 
         for (_, order) in self.into_iter() {
-            if order.is_valid(token_map) {
+            if order.is_valid(tokens) {
                 valid_orders.push(order);
             } else {
-                exit_leaves.push(ExitLeaf::Withdrawal(order.to_exit_leaf()));
+                exit_leaves.push(ExitLeaf::Withdrawal(order.to_exit_leaf(tokens)));
             }
         }
 
@@ -133,15 +136,16 @@ pub trait Order {
     /// # Arguments
     ///
     /// * `self` - The order being checked.
-    /// * `token_map` - The token map to check against.
-    fn is_valid(&self, token_map: &TokenMap) -> bool;
+    /// * `tokens` - The tokens to check against.
+    fn is_valid(&self, tokens: &Tokens) -> bool;
 
     /// Converts the order to an exit leaf.
     ///
     /// # Arguments
     ///
     /// * `self` - The order being converted.
-    fn to_exit_leaf(&self) -> ExitLeafWithdrawal;
+    /// * `tokens` - The tokens being used in the auction.
+    fn to_exit_leaf(&self, tokens: &Tokens) -> ExitLeafTokenWithdrawal;
 }
 
 /// Type alias for orders mapping.

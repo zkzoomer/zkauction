@@ -73,8 +73,6 @@ mod tests {
             bid_price_revealed: U256::from(rand::random::<u64>() % crate::constants::MAX_BID_PRICE),
             amount: U256::from(rand::random::<u128>()),
             collateral_amount: U256::from(rand::random::<u128>()),
-            purchase_token: Address::random(),
-            collateral_token: Address::random(),
             is_rollover: false,
             rollover_pair_off_term_repo_servicer: Address::ZERO,
             is_revealed: true,
@@ -91,7 +89,6 @@ mod tests {
                 rand::random::<u64>() % crate::constants::MAX_OFFER_PRICE,
             ),
             amount: U256::from(rand::random::<u128>()),
-            purchase_token: Address::random(),
             is_revealed: true,
         }
     }

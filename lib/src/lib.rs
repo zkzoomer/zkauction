@@ -8,8 +8,8 @@ use types::{
     bids::{BidReveals, BidSubmissions, Bids, ValidatedBids},
     exit_tree::{ExitLeaves, ExitTree},
     offers::{OfferReveals, OfferSubmissions, Offers, ValidatedOffers},
-    tokens::{IntoTokenMap, TokenMap, TokenPrices},
-    ChainableSubmissions, PlacedOrders, UnrollableStructs, ValidatedOrders,
+    tokens::Tokens,
+    ChainableSubmissions, HashableStruct, PlacedOrders, ValidatedOrders,
 };
 use utils::compute_clearing_rate;
 
@@ -36,7 +36,7 @@ pub fn run_auction<F: Fn(&[u8]) -> B256>(
     offer_submissions: &OfferSubmissions,
     bid_reveals: &BidReveals,
     offer_reveals: &OfferReveals,
-    token_prices: &TokenPrices,
+    tokens: &Tokens,
 ) -> (B256, B256, B256, B256) {
     // Compute the hash chain for the bids
     let mut bids: Bids = Bids::new();
@@ -50,17 +50,15 @@ pub fn run_auction<F: Fn(&[u8]) -> B256>(
     acc_offers_hash = offer_reveals.hash_chain(hash_function, acc_offers_hash, &mut offers);
 
     // Compute the hash of the information of the tokens involved in the auction
-    let token_prices_hash: B256 = token_prices.hash_together(hash_function);
-    let token_map: TokenMap = token_prices.to_token_map();
+    let tokens_hash: B256 = tokens.hash(hash_function);
 
     // Define the exit leaves
     let mut exit_leaves: ExitLeaves = ExitLeaves::new();
 
     // Get validated bids and offers
-    let mut validated_bids: ValidatedBids =
-        bids.into_validated_orders(&token_map, &mut exit_leaves);
+    let mut validated_bids: ValidatedBids = bids.into_validated_orders(tokens, &mut exit_leaves);
     let mut validated_offers: ValidatedOffers =
-        offers.into_validated_orders(&token_map, &mut exit_leaves);
+        offers.into_validated_orders(tokens, &mut exit_leaves);
 
     // Sort validated bids by descending price
     validated_bids.sort_orders();
@@ -79,7 +77,7 @@ pub fn run_auction<F: Fn(&[u8]) -> B256>(
     (
         acc_bids_hash,
         acc_offers_hash,
-        token_prices_hash,
+        tokens_hash,
         auction_result_root,
     )
 }

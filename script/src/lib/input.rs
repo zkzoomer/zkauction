@@ -3,7 +3,7 @@ use sp1_sdk::SP1Stdin;
 use zkauction_lib::types::{
     bids::{BidReveal, BidReveals, BidSubmission, BidSubmissions},
     offers::{OfferReveal, OfferReveals, OfferSubmission, OfferSubmissions},
-    tokens::{TokenPrice, TokenPrices},
+    tokens::Tokens,
 };
 
 /// Reads the provided auction inputs and sets them in the provided stdin.
@@ -15,10 +15,9 @@ pub fn set_inputs(
     OfferSubmissions,
     BidReveals,
     OfferReveals,
-    TokenPrices,
+    Tokens,
 ) {
-    let num_offers: i32 = 10;
-    let num_tokens: i32 = 2;
+    let num_offers: i32 = 1000;
 
     let prover_address = Address::random();
     let bid_submissions: BidSubmissions = (0..num_offers)
@@ -28,8 +27,6 @@ pub fn set_inputs(
             bidPriceHash: B256::random(),
             amount: U256::from(rand::random::<u128>()),
             collateralAmount: U256::from(rand::random::<u128>()),
-            purchaseToken: Address::random(),
-            collateralToken: Address::random(),
         })
         .collect();
     let offer_submissions: OfferSubmissions = (0..num_offers)
@@ -38,7 +35,6 @@ pub fn set_inputs(
             id: U96::from(rand::random::<u64>()),
             offerPriceHash: B256::random(),
             amount: U256::from(rand::random::<u128>()),
-            purchaseToken: Address::random(),
         })
         .collect();
     let bid_reveals: BidReveals = (0..num_offers)
@@ -55,12 +51,12 @@ pub fn set_inputs(
             nonce: U256::from(rand::random::<u128>()),
         })
         .collect();
-    let tokens: TokenPrices = (0..num_tokens)
-        .map(|_| TokenPrice {
-            tokenAddress: Address::random(),
-            price: U256::from(rand::random::<u128>()),
-        })
-        .collect();
+    let tokens: Tokens = Tokens {
+        purchaseToken: Address::random(),
+        purchasePrice: U256::from(rand::random::<u64>()),
+        collateralToken: Address::random(),
+        collateralPrice: U256::from(rand::random::<u64>()),
+    };
 
     stdin.write(&prover_address);
     stdin.write(&bid_submissions);

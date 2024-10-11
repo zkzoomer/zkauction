@@ -1,5 +1,5 @@
-use super::exit_tree::ExitLeafWithdrawal;
-use super::tokens::TokenMap;
+use super::exit_tree::ExitLeafTokenWithdrawal;
+use super::tokens::Tokens;
 use super::utils::{add_to_hash_chain, get_key, get_price_hash};
 use super::{ChainableSubmissions, Order, PlacedOrders, ValidatedOrders};
 use crate::constants::MAX_OFFER_PRICE;
@@ -21,8 +21,6 @@ pub struct Offer {
     pub offer_price_revealed: U256,
     /// Maximum amount of purchase tokens that can be lent.
     pub amount: U256,
-    /// Address of the ERC20 token to be lent (purchase token).
-    pub purchase_token: Address,
     /// Indicates whether the offer has been revealed in the reveal phase.
     pub is_revealed: bool,
 }
@@ -38,7 +36,6 @@ impl Order for Offer {
             offer_price_hash: offer_submission.offerPriceHash,
             offer_price_revealed: U256::ZERO,
             amount: offer_submission.amount,
-            purchase_token: offer_submission.purchaseToken,
             is_revealed: false,
         }
     }
@@ -62,14 +59,14 @@ impl Order for Offer {
         }
     }
 
-    fn is_valid(&self, _token_map: &TokenMap) -> bool {
+    fn is_valid(&self, _tokens: &Tokens) -> bool {
         self.is_revealed
     }
 
-    fn to_exit_leaf(&self) -> ExitLeafWithdrawal {
-        ExitLeafWithdrawal {
+    fn to_exit_leaf(&self, tokens: &Tokens) -> ExitLeafTokenWithdrawal {
+        ExitLeafTokenWithdrawal {
+            token: tokens.purchaseToken,
             recipient: self.offeror,
-            token: self.purchase_token,
             amount: self.amount,
         }
     }
@@ -121,8 +118,6 @@ sol! {
         bytes32 offerPriceHash;
         /// The maximum amount of purchase tokens that can be lent
         uint256 amount;
-        /// The address of the ERC20 purchase token
-        address purchaseToken;
     }
 }
 
@@ -219,7 +214,6 @@ mod tests {
         assert_eq!(offer.id, offer_submission.id);
         assert_eq!(offer.offer_price_hash, offer_submission.offerPriceHash);
         assert_eq!(offer.amount, offer_submission.amount);
-        assert_eq!(offer.purchase_token, offer_submission.purchaseToken);
     }
 
     #[test]
@@ -286,19 +280,20 @@ mod tests {
     fn test_offer_is_valid() {
         let mut offer: Offer = random_revealed_offer();
         offer.is_revealed = true;
-        assert!(offer.is_valid(&TokenMap::new()));
+        assert!(offer.is_valid(&random_tokens()));
 
         offer.is_revealed = false;
-        assert!(!offer.is_valid(&TokenMap::new()));
+        assert!(!offer.is_valid(&random_tokens()));
     }
 
     #[test]
     fn test_offer_to_exit_leaf() {
         let offer: Offer = random_revealed_offer();
-        let exit_leaf = offer.to_exit_leaf();
+        let tokens: Tokens = random_tokens();
+        let exit_leaf: ExitLeafTokenWithdrawal = offer.to_exit_leaf(&tokens);
 
         assert_eq!(exit_leaf.recipient, offer.offeror);
-        assert_eq!(exit_leaf.token, offer.purchase_token);
+        assert_eq!(exit_leaf.token, tokens.purchaseToken);
         assert_eq!(exit_leaf.amount, offer.amount);
     }
 
@@ -406,6 +401,7 @@ mod tests {
     fn test_validate_offers() {
         let mut placed_offers: Offers = Offers::new();
         let mut exit_leaves: ExitLeaves = ExitLeaves::new();
+        let tokens: Tokens = random_tokens();
         let revealed_offer: Offer = random_revealed_offer();
         let non_revealed_offer: Offer = random_non_revealed_offer();
 
@@ -418,15 +414,14 @@ mod tests {
             non_revealed_offer.clone(),
         );
 
-        let validated_offers =
-            placed_offers.into_validated_orders(&TokenMap::new(), &mut exit_leaves);
+        let validated_offers = placed_offers.into_validated_orders(&tokens, &mut exit_leaves);
 
         assert_eq!(validated_offers.len(), 1);
         assert_eq!(exit_leaves.len(), 1);
         assert_eq!(validated_offers[0], revealed_offer);
         assert_eq!(
             exit_leaves[0],
-            ExitLeaf::Withdrawal(non_revealed_offer.to_exit_leaf())
+            ExitLeaf::Withdrawal(non_revealed_offer.to_exit_leaf(&tokens))
         );
     }
 
@@ -450,7 +445,6 @@ mod tests {
             id: U96::from(rand::random::<u64>()),
             offerPriceHash: B256::random(),
             amount: U256::from(rand::random::<u128>()),
-            purchaseToken: Address::random(),
         }
     }
 
@@ -461,7 +455,6 @@ mod tests {
             id: U96::from(rand::random::<u64>()),
             offerPriceHash: get_price_hash(&|x| keccak256(x), price, nonce),
             amount: U256::from(rand::random::<u128>()),
-            purchaseToken: Address::random(),
         }
     }
 
@@ -475,7 +468,6 @@ mod tests {
                 rand::random::<u64>() % crate::constants::MAX_OFFER_PRICE,
             ),
             amount: U256::from(rand::random::<u128>()),
-            purchase_token: Address::random(),
             is_revealed: true,
         }
     }
@@ -488,7 +480,6 @@ mod tests {
             offer_price_hash: B256::random(),
             offer_price_revealed: U256::ZERO,
             amount: U256::from(rand::random::<u128>()),
-            purchase_token: Address::random(),
             is_revealed: false,
         }
     }
@@ -503,7 +494,16 @@ mod tests {
             offer.offer_price_revealed
         );
         assert_eq!(offer_expected.amount, offer.amount);
-        assert_eq!(offer_expected.purchase_token, offer.purchase_token);
         assert_eq!(offer_expected.is_revealed, offer.is_revealed);
+    }
+
+    /// Creates a new set of random tokens.
+    fn random_tokens() -> Tokens {
+        Tokens {
+            purchaseToken: Address::random(),
+            purchasePrice: U256::from(rand::random::<u64>()),
+            collateralToken: Address::random(),
+            collateralPrice: U256::from(rand::random::<u64>()),
+        }
     }
 }

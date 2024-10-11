@@ -3,25 +3,36 @@ use alloy_sol_types::{sol, SolValue};
 
 sol! {
     #[derive(PartialEq, Eq, Debug)]
-    struct ExitLeafWithdrawal {
+    struct ExitLeafTokenWithdrawal {
+        /// The recipient of the withdrawal
         address recipient;
+        /// The token being withdrawn
         address token;
+        /// The amount being withdrawn
+        uint256 amount;
+    }
+
+    struct ExitLeafRepoTokenWithdrawal {
+        /// The recipient of the withdrawal
+        address recipient;
+        /// The amount being withdrawn
         uint256 amount;
     }
 
     #[derive(PartialEq, Eq, Debug)]
     struct ExitLeafRepurchaseObligation {
+        /// The debtor of the repurchase obligation
         address debtor;
-        address repurchaseToken;
+        /// The amount being repurchased
         uint256 repurchaseAmount;
-        address collateralToken;
+        /// The amount of collateral being repurchased
         uint256 collateralAmount;
     }
 }
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum ExitLeaf {
-    Withdrawal(ExitLeafWithdrawal),
+    Withdrawal(ExitLeafTokenWithdrawal),
     RepurchaseObligation(ExitLeafRepurchaseObligation),
 }
 
@@ -132,16 +143,14 @@ mod tests {
     impl Distribution<ExitLeaf> for Standard {
         fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> ExitLeaf {
             match rng.gen_range(0..=1) {
-                0 => ExitLeaf::Withdrawal(ExitLeafWithdrawal {
+                0 => ExitLeaf::Withdrawal(ExitLeafTokenWithdrawal {
                     recipient: Address::random(),
                     token: Address::random(),
                     amount: U256::from(rand::random::<u128>()),
                 }),
                 1 => ExitLeaf::RepurchaseObligation(ExitLeafRepurchaseObligation {
                     debtor: Address::random(),
-                    repurchaseToken: Address::random(),
                     repurchaseAmount: U256::from(rand::random::<u128>()),
-                    collateralToken: Address::random(),
                     collateralAmount: U256::from(rand::random::<u128>()),
                 }),
                 _ => unreachable!(),

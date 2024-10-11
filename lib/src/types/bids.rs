@@ -1,5 +1,5 @@
-use super::exit_tree::ExitLeafWithdrawal;
-use super::tokens::TokenMap;
+use super::exit_tree::ExitLeafTokenWithdrawal;
+use super::tokens::Tokens;
 use super::utils::{add_to_hash_chain, get_key, get_price_hash};
 use super::{ChainableSubmissions, Order, PlacedOrders, ValidatedOrders};
 use crate::constants::{BPS, INITIAL_COLLATERAL_RATIO, MAX_BID_PRICE};
@@ -23,10 +23,6 @@ pub struct Bid {
     pub amount: U256,
     /// Amount of collateral tokens locked for this bid.
     pub collateral_amount: U256,
-    /// Address of the ERC20 token to be borrowed (purchase token).
-    pub purchase_token: Address,
-    /// Address of the ERC20 token used as collateral.
-    pub collateral_token: Address,
     /// Indicates whether this bid is part of a rollover process.
     pub is_rollover: bool,
     /// Address of the term repo servicer for rollover pair-offs, if applicable.
@@ -47,8 +43,6 @@ impl Order for Bid {
             bid_price_revealed: U256::ZERO,
             amount: bid_submission.amount,
             collateral_amount: bid_submission.collateralAmount,
-            purchase_token: bid_submission.purchaseToken,
-            collateral_token: bid_submission.collateralToken,
             is_rollover: false,
             rollover_pair_off_term_repo_servicer: Address::ZERO,
             is_revealed: false,
@@ -75,31 +69,26 @@ impl Order for Bid {
         }
     }
 
-    fn is_valid(&self, token_map: &TokenMap) -> bool {
-        if let (Some(collateral_price), Some(purchase_price)) = (
-            token_map.get(&self.collateral_token),
-            token_map.get(&self.purchase_token),
-        ) {
-            // Calculate the value of collateral and purchase amount
-            // If one operation overflows, the bid is invalid
-            let (collateral_value, of1) = self.collateral_amount.overflowing_mul(*collateral_price);
-            let (purchase_value, of2) = self.amount.overflowing_mul(*purchase_price);
-            let (minimum_collateral_side, of3) =
-                purchase_value.overflowing_mul(U256::from(INITIAL_COLLATERAL_RATIO));
-            let (collateral_side, of4) = collateral_value.overflowing_mul(U256::from(BPS));
+    fn is_valid(&self, tokens: &Tokens) -> bool {
+        // Calculate the value of collateral and purchase amount
+        // If one operation overflows, the bid is invalid
+        let (collateral_value, of1) = self
+            .collateral_amount
+            .overflowing_mul(tokens.collateralPrice);
+        let (purchase_value, of2) = self.amount.overflowing_mul(tokens.purchasePrice);
+        let (minimum_collateral_side, of3) =
+            purchase_value.overflowing_mul(U256::from(INITIAL_COLLATERAL_RATIO));
+        let (collateral_side, of4) = collateral_value.overflowing_mul(U256::from(BPS));
 
-            println!("check: {}", collateral_side >= minimum_collateral_side);
-            println!("overflow: {}", !of1 && !of2 && !of3 && !of4);
-            self.is_revealed && collateral_side >= minimum_collateral_side && (!of1 && !of2 && !of3)
-        } else {
-            false // Invalid if either token is not in the TokenMap
-        }
+        self.is_revealed
+            && collateral_side >= minimum_collateral_side
+            && (!of1 && !of2 && !of3 && !of4)
     }
 
-    fn to_exit_leaf(&self) -> ExitLeafWithdrawal {
-        ExitLeafWithdrawal {
+    fn to_exit_leaf(&self, tokens: &Tokens) -> ExitLeafTokenWithdrawal {
+        ExitLeafTokenWithdrawal {
             recipient: self.bidder,
-            token: self.collateral_token,
+            token: tokens.collateralToken,
             amount: self.collateral_amount,
         }
     }
@@ -165,10 +154,6 @@ sol! {
         uint256 amount;
         /// The amount of collateral tokens that were locked onchain
         uint256 collateralAmount;
-        /// The address of the ERC20 purchase token
-        address purchaseToken;
-        /// The addresses of the collateral ERC20 token in the bid
-        address collateralToken;
     }
 }
 
@@ -249,8 +234,6 @@ mod tests {
         assert_eq!(bid.bid_price_hash, bid_submission.bidPriceHash);
         assert_eq!(bid.amount, bid_submission.amount);
         assert_eq!(bid.collateral_amount, bid_submission.collateralAmount);
-        assert_eq!(bid.purchase_token, bid_submission.purchaseToken);
-        assert_eq!(bid.collateral_token, bid_submission.collateralToken);
     }
 
     #[test]
@@ -316,48 +299,29 @@ mod tests {
 
     #[test]
     fn test_bid_is_valid() {
-        let collateral_token: Address = Address::random();
-        let collateral_price: U256 = U256::from(rand::random::<u64>());
-        let purchase_token: Address = Address::random();
-        let purchase_price: U256 = U256::from(rand::random::<u64>());
-        let token_map: TokenMap = [
-            (collateral_token, collateral_price),
-            (purchase_token, purchase_price),
-        ]
-        .into();
+        let tokens: Tokens = random_tokens();
 
-        let revealed_bid: Bid = random_collateralized_revealed_bid(
-            &purchase_token,
-            &purchase_price,
-            &collateral_token,
-            &collateral_price,
-        );
-        assert!(revealed_bid.is_valid(&token_map));
+        let revealed_bid: Bid =
+            random_collateralized_revealed_bid(&tokens.purchasePrice, &tokens.collateralPrice);
+        assert!(revealed_bid.is_valid(&tokens));
 
-        let non_revealed_bid: Bid = random_collateralized_non_revealed_bid(
-            &purchase_token,
-            &purchase_price,
-            &collateral_token,
-            &collateral_price,
-        );
-        assert!(!non_revealed_bid.is_valid(&token_map));
+        let non_revealed_bid: Bid =
+            random_collateralized_non_revealed_bid(&tokens.purchasePrice, &tokens.collateralPrice);
+        assert!(!non_revealed_bid.is_valid(&tokens));
 
-        let undercollateralized_bid: Bid = random_undercollateralized_bid(
-            &purchase_token,
-            &purchase_price,
-            &collateral_token,
-            &collateral_price,
-        );
-        assert!(!undercollateralized_bid.is_valid(&token_map));
+        let undercollateralized_bid: Bid =
+            random_undercollateralized_bid(&tokens.purchasePrice, &tokens.collateralPrice);
+        assert!(!undercollateralized_bid.is_valid(&tokens));
     }
 
     #[test]
     fn test_bid_to_exit_leaf() {
         let bid: Bid = random_revealed_bid();
-        let exit_leaf = bid.to_exit_leaf();
+        let tokens: Tokens = random_tokens();
+        let exit_leaf: ExitLeafTokenWithdrawal = bid.to_exit_leaf(&tokens);
 
         assert_eq!(exit_leaf.recipient, bid.bidder);
-        assert_eq!(exit_leaf.token, bid.collateral_token);
+        assert_eq!(exit_leaf.token, tokens.collateralToken);
         assert_eq!(exit_leaf.amount, bid.collateral_amount);
     }
 
@@ -461,35 +425,15 @@ mod tests {
 
     #[test]
     fn test_validate_bids() {
-        let collateral_token: Address = Address::random();
-        let collateral_price: U256 = U256::from(rand::random::<u64>());
-        let purchase_token: Address = Address::random();
-        let purchase_price: U256 = U256::from(rand::random::<u64>());
-        let token_map: TokenMap = [
-            (collateral_token, collateral_price),
-            (purchase_token, purchase_price),
-        ]
-        .into();
+        let tokens: Tokens = random_tokens();
 
         let mut exit_leaves: ExitLeaves = ExitLeaves::new();
-        let revealed_bid: Bid = random_collateralized_revealed_bid(
-            &purchase_token,
-            &purchase_price,
-            &collateral_token,
-            &collateral_price,
-        );
-        let undercollateralized_bid: Bid = random_undercollateralized_bid(
-            &purchase_token,
-            &purchase_price,
-            &collateral_token,
-            &collateral_price,
-        );
-        let non_revealed_bid: Bid = random_collateralized_non_revealed_bid(
-            &purchase_token,
-            &purchase_price,
-            &collateral_token,
-            &collateral_price,
-        );
+        let revealed_bid: Bid =
+            random_collateralized_revealed_bid(&tokens.purchasePrice, &tokens.collateralPrice);
+        let undercollateralized_bid: Bid =
+            random_undercollateralized_bid(&tokens.purchasePrice, &tokens.collateralPrice);
+        let non_revealed_bid: Bid =
+            random_collateralized_non_revealed_bid(&tokens.purchasePrice, &tokens.collateralPrice);
 
         let placed_bids: Bids = Bids::from([
             (
@@ -507,7 +451,7 @@ mod tests {
         ]);
 
         let validated_bids: ValidatedBids =
-            placed_bids.into_validated_orders(&token_map, &mut exit_leaves);
+            placed_bids.into_validated_orders(&tokens, &mut exit_leaves);
 
         assert_eq!(validated_bids.len(), 1);
         assert_eq!(exit_leaves.len(), 2);
@@ -544,8 +488,6 @@ mod tests {
             bidPriceHash: B256::random(),
             amount: U256::from(rand::random::<u128>()),
             collateralAmount: U256::from(rand::random::<u128>()),
-            purchaseToken: Address::random(),
-            collateralToken: Address::random(),
         }
     }
 
@@ -557,16 +499,12 @@ mod tests {
             bidPriceHash: get_price_hash(&|x| keccak256(x), price, nonce),
             amount: U256::from(rand::random::<u128>()),
             collateralAmount: U256::from(rand::random::<u128>()),
-            purchaseToken: Address::random(),
-            collateralToken: Address::random(),
         }
     }
 
     /// Creates a random non-revealed Bid.
     pub fn random_collateralized_non_revealed_bid(
-        purchase_token: &Address,
         purchase_price: &U256,
-        collateral_token: &Address,
         collateral_price: &U256,
     ) -> Bid {
         let purchase_amount: U256 = U256::from(rand::random::<u128>());
@@ -581,8 +519,6 @@ mod tests {
             amount: purchase_amount,
             collateral_amount: minimum_collateral_amount
                 .saturating_add(U256::from(rand::random::<u128>())),
-            purchase_token: *purchase_token,
-            collateral_token: *collateral_token,
             is_rollover: false,
             rollover_pair_off_term_repo_servicer: Address::ZERO,
             is_revealed: false,
@@ -590,12 +526,7 @@ mod tests {
     }
 
     /// Creates a random undercollateralized Bid.
-    pub fn random_undercollateralized_bid(
-        purchase_token: &Address,
-        purchase_price: &U256,
-        collateral_token: &Address,
-        collateral_price: &U256,
-    ) -> Bid {
+    pub fn random_undercollateralized_bid(purchase_price: &U256, collateral_price: &U256) -> Bid {
         let purchase_amount: U256 = U256::from(rand::random::<u64>());
         let purchase_value: U256 = purchase_amount * purchase_price;
         let minimum_collateral_side: U256 = purchase_value * U256::from(INITIAL_COLLATERAL_RATIO);
@@ -611,8 +542,6 @@ mod tests {
             bid_price_revealed: U256::from(rand::random::<u64>() % MAX_BID_PRICE),
             amount: purchase_amount,
             collateral_amount: underwater_collateral_amount,
-            purchase_token: *purchase_token,
-            collateral_token: *collateral_token,
             is_rollover: false,
             rollover_pair_off_term_repo_servicer: Address::ZERO,
             is_revealed: true,
@@ -621,9 +550,7 @@ mod tests {
 
     /// Creates a random revealed Bid.
     pub fn random_collateralized_revealed_bid(
-        purchase_token: &Address,
         purchase_price: &U256,
-        collateral_token: &Address,
         collateral_price: &U256,
     ) -> Bid {
         let amount: U256 = U256::from(rand::random::<u64>());
@@ -640,8 +567,6 @@ mod tests {
             amount,
             collateral_amount: minimum_collateral_amount
                 .saturating_add(U256::from(rand::random::<u128>())),
-            purchase_token: *purchase_token,
-            collateral_token: *collateral_token,
             is_rollover: false,
             rollover_pair_off_term_repo_servicer: Address::ZERO,
             is_revealed: true,
@@ -657,8 +582,6 @@ mod tests {
             bid_price_revealed: U256::from(rand::random::<u64>() % crate::constants::MAX_BID_PRICE),
             amount: U256::from(rand::random::<u128>()),
             collateral_amount: U256::from(rand::random::<u128>()),
-            purchase_token: Address::random(),
-            collateral_token: Address::random(),
             is_rollover: false,
             rollover_pair_off_term_repo_servicer: Address::ZERO,
             is_revealed: true,
@@ -673,13 +596,21 @@ mod tests {
         assert_eq!(bid_expected.bid_price_revealed, bid.bid_price_revealed);
         assert_eq!(bid_expected.amount, bid.amount);
         assert_eq!(bid_expected.collateral_amount, bid.collateral_amount);
-        assert_eq!(bid_expected.purchase_token, bid.purchase_token);
-        assert_eq!(bid_expected.collateral_token, bid.collateral_token);
         assert_eq!(bid_expected.is_rollover, bid.is_rollover);
         assert_eq!(
             bid_expected.rollover_pair_off_term_repo_servicer,
             bid.rollover_pair_off_term_repo_servicer
         );
         assert_eq!(bid_expected.is_revealed, bid.is_revealed);
+    }
+
+    /// Creates a new set of random tokens.
+    fn random_tokens() -> Tokens {
+        Tokens {
+            purchaseToken: Address::random(),
+            purchasePrice: U256::from(rand::random::<u64>()),
+            collateralToken: Address::random(),
+            collateralPrice: U256::from(rand::random::<u64>()),
+        }
     }
 }
