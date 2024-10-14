@@ -1,9 +1,11 @@
+pub mod auction;
 pub mod constants;
 pub mod precompiles;
 pub mod types;
 pub mod utils;
 
-use alloy_primitives::{B256, U256};
+use alloy_primitives::{Address, B256, U256};
+use auction::auction_match;
 use types::{
     allocations::AuctionResults,
     bids::{BidReveals, BidSubmissions, Bids, ValidatedBids},
@@ -70,6 +72,13 @@ pub fn run_auction<F: Fn(&[u8]) -> B256>(
 
     // Compute auction clearing price
     let _clearing_rate: U256 = compute_clearing_rate(&validated_bids, &validated_offers);
+    // Match bids and offers
+    auction_match(
+        tokens,
+        &mut validated_bids,
+        &mut validated_offers,
+        &auction_results,
+    );
 
     // Define the exit leaves
     let mut exit_leaves: ExitLeaves = ExitLeaves::new();
