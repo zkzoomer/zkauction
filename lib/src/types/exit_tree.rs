@@ -12,6 +12,7 @@ sol! {
         uint256 amount;
     }
 
+    #[derive(PartialEq, Eq, Debug)]
     struct ExitLeafRepoTokenWithdrawal {
         /// The recipient of the withdrawal
         address recipient;
@@ -30,24 +31,42 @@ sol! {
     }
 }
 
+/// Represents different types of exit operations in the system.
 #[derive(PartialEq, Eq, Debug)]
 pub enum ExitLeaf {
-    Withdrawal(ExitLeafTokenWithdrawal),
+    /// Represents a token withdrawal operation.
+    TokenWithdrawal(ExitLeafTokenWithdrawal),
+    /// Represents a repo token withdrawal operation.
+    RepoTokenWithdrawal(ExitLeafRepoTokenWithdrawal),
+    /// Represents a repurchase obligation data bridging.
     RepurchaseObligation(ExitLeafRepurchaseObligation),
 }
 
+/// A collection of `ExitLeaf` instances.
+pub type ExitLeaves = Vec<ExitLeaf>;
+
 impl ExitLeaf {
+    /// Computes the hash of the `ExitLeaf` using the provided hash function.
+    ///
+    /// # Arguments
+    ///
+    /// * `hash_function` - A closure that takes a byte slice and returns a 32-byte hash.
+    ///
+    /// # Returns
+    ///
+    /// A 32-byte hash (`B256`) of the `ExitLeaf`.
     pub fn hash<F: Fn(&[u8]) -> B256>(&self, hash_function: &F) -> B256 {
         match self {
-            ExitLeaf::Withdrawal(withdrawal) => hash_function(&withdrawal.abi_encode_packed()),
+            ExitLeaf::TokenWithdrawal(withdrawal) => hash_function(&withdrawal.abi_encode_packed()),
+            ExitLeaf::RepoTokenWithdrawal(withdrawal) => {
+                hash_function(&withdrawal.abi_encode_packed())
+            }
             ExitLeaf::RepurchaseObligation(obligation) => {
                 hash_function(&obligation.abi_encode_packed())
             }
         }
     }
 }
-
-pub type ExitLeaves = Vec<ExitLeaf>;
 
 /// Defines a lean incremental Merkle tree.
 pub trait ExitTree {
@@ -72,11 +91,13 @@ pub trait ExitTree {
 }
 
 impl ExitTree for ExitLeaves {
+    // TODO: functionality to dump the tree leaves and tree nodes to a json file, for data availability
     fn hash_exit_root<F: Fn(&[u8]) -> B256>(&self, hash_function: &F) -> B256 {
         if self.is_empty() {
             return B256::ZERO;
         }
 
+        // TODO: Optimize so the hash of each leaf is obtained on the first time around of the while loop
         // Get the hash of each leaf
         let mut current_level: Vec<B256> = self
             .iter()
@@ -142,13 +163,17 @@ mod tests {
     /// Creates a random `ExitLeaf`
     impl Distribution<ExitLeaf> for Standard {
         fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> ExitLeaf {
-            match rng.gen_range(0..=1) {
-                0 => ExitLeaf::Withdrawal(ExitLeafTokenWithdrawal {
+            match rng.gen_range(0..=2) {
+                0 => ExitLeaf::TokenWithdrawal(ExitLeafTokenWithdrawal {
                     recipient: Address::random(),
                     token: Address::random(),
                     amount: U256::from(rand::random::<u128>()),
                 }),
-                1 => ExitLeaf::RepurchaseObligation(ExitLeafRepurchaseObligation {
+                1 => ExitLeaf::RepoTokenWithdrawal(ExitLeafRepoTokenWithdrawal {
+                    recipient: Address::random(),
+                    amount: U256::from(rand::random::<u128>()),
+                }),
+                2 => ExitLeaf::RepurchaseObligation(ExitLeafRepurchaseObligation {
                     debtor: Address::random(),
                     repurchaseAmount: U256::from(rand::random::<u128>()),
                     collateralAmount: U256::from(rand::random::<u128>()),

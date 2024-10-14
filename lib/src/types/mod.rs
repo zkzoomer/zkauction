@@ -1,5 +1,8 @@
+pub mod allocations;
+pub mod bidder_allocations;
 pub mod bids;
 pub mod exit_tree;
+pub mod offeror_allocations;
 pub mod offers;
 pub mod tokens;
 pub mod utils;
@@ -90,7 +93,7 @@ pub trait PlacedOrders: IntoIterator<Item = (B256, Self::Order)> + Sized {
             if order.is_valid(tokens) {
                 valid_orders.push(order);
             } else {
-                exit_leaves.push(ExitLeaf::Withdrawal(order.to_exit_leaf(tokens)));
+                exit_leaves.push(ExitLeaf::TokenWithdrawal(order.to_exit_leaf(tokens)));
             }
         }
 

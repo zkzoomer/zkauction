@@ -421,7 +421,7 @@ mod tests {
         assert_eq!(validated_offers[0], revealed_offer);
         assert_eq!(
             exit_leaves[0],
-            ExitLeaf::Withdrawal(non_revealed_offer.to_exit_leaf(&tokens))
+            ExitLeaf::TokenWithdrawal(non_revealed_offer.to_exit_leaf(&tokens))
         );
     }
 

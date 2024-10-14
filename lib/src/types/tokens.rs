@@ -27,27 +27,33 @@ mod tests {
 
     #[test]
     fn test_hash() {
-        let token_prices: Tokens = Tokens {
-            purchaseToken: Address::random(),
-            purchasePrice: U256::from(rand::random::<u128>()),
-            collateralToken: Address::random(),
-            collateralPrice: U256::from(rand::random::<u128>()),
-        };
+        let tokens: Tokens = random_tokens();
 
         // Recreates the onchain process
-        let mut encoded_token_prices: Vec<u8> = Vec::new();
-        encoded_token_prices.extend_from_slice(&token_prices.purchaseToken.abi_encode_packed());
-        encoded_token_prices.extend_from_slice(&token_prices.purchasePrice.abi_encode_packed());
-        encoded_token_prices.extend_from_slice(&token_prices.collateralToken.abi_encode_packed());
-        encoded_token_prices.extend_from_slice(&token_prices.collateralPrice.abi_encode_packed());
-        let expected_output: B256 = keccak256(&encoded_token_prices);
+        let mut encoded_tokens: Vec<u8> = Vec::new();
+        encoded_tokens.extend_from_slice(&tokens.purchaseToken.abi_encode_packed());
+        encoded_tokens.extend_from_slice(&tokens.purchasePrice.abi_encode_packed());
+        encoded_tokens.extend_from_slice(&tokens.collateralToken.abi_encode_packed());
+        encoded_tokens.extend_from_slice(&tokens.collateralPrice.abi_encode_packed());
+        let expected_output: B256 = keccak256(&encoded_tokens);
 
         // Testing with `sp1_keccak256`
-        let sp1_output: B256 = token_prices.hash(&|x: &[u8]| keccak256(x));
+        let sp1_output: B256 = tokens.hash(&|x: &[u8]| keccak256(x));
         assert_eq!(sp1_output, expected_output);
 
         // Testing with `risc0_keccak256`
         // let risc0_output: B256 = hash_unrolled(&risc0_keccak256, &tokens);
         // assert_eq!(risc0_output, expected_output);
+    }
+
+    // TEST HELPER FUNCTIONS
+    /// Creates a new set of random tokens.
+    fn random_tokens() -> Tokens {
+        Tokens {
+            purchaseToken: Address::random(),
+            purchasePrice: U256::from(rand::random::<u64>()),
+            collateralToken: Address::random(),
+            collateralPrice: U256::from(rand::random::<u64>()),
+        }
     }
 }
