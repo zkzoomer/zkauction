@@ -6,9 +6,10 @@ pub mod offeror_allocations;
 pub mod offers;
 pub mod tokens;
 pub mod utils;
+use allocations::Allocations;
 use alloy_primitives::B256;
 use alloy_sol_types::{sol, SolValue};
-use exit_tree::{ExitLeaf, ExitLeafTokenWithdrawal, ExitLeaves};
+use exit_tree::ExitLeafTokenWithdrawal;
 use std::collections::BTreeMap;
 use tokens::Tokens;
 
@@ -65,6 +66,7 @@ pub trait HashableStruct: SolValue {
 /// Trait for placed orders mappings.
 pub trait PlacedOrders: IntoIterator<Item = (B256, Self::Order)> + Sized {
     type OrderSubmission;
+    type Allocation;
     type Order: Order;
 
     /// Saves a new order, updates an existing one, or deletes it from the orders collection.
@@ -75,17 +77,17 @@ pub trait PlacedOrders: IntoIterator<Item = (B256, Self::Order)> + Sized {
     /// * `order_submission` - A reference to the `OrderSubmission` containing the order details.
     fn save_or_update_order(&mut self, order_submission: &Self::OrderSubmission);
 
-    /// Validates orders and returns a vector of valid orders.
+    /// Validates orders and returns a vector of valid orders, assigning invalid orders to the corresponding allocations.
     ///
     /// # Arguments
     ///
     /// * `orders` - The orders mapping to validate.
     /// * `tokens` - The tokens to check against.
-    /// * `exit_leaves` - The exit leaves to add invalid orders to.
+    /// * `allocations` - The allocations to add invalid orders to.
     fn into_validated_orders(
         self,
         tokens: &Tokens,
-        exit_leaves: &mut ExitLeaves,
+        allocations: &mut dyn Allocations<Allocation = Self::Allocation, Order = Self::Order>,
     ) -> Vec<Self::Order> {
         let mut valid_orders = Vec::new();
 
@@ -93,7 +95,7 @@ pub trait PlacedOrders: IntoIterator<Item = (B256, Self::Order)> + Sized {
             if order.is_valid(tokens) {
                 valid_orders.push(order);
             } else {
-                exit_leaves.push(ExitLeaf::TokenWithdrawal(order.to_exit_leaf(tokens)));
+                allocations.add_from_order(&order);
             }
         }
 

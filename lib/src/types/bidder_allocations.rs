@@ -1,10 +1,12 @@
+use super::allocations::Allocations;
+use super::bids::Bid;
 use super::exit_tree::{ExitLeafRepurchaseObligation, ExitLeafTokenWithdrawal, ExitLeaves};
 use super::tokens::Tokens;
 use super::{allocations::Allocation, exit_tree::ExitLeaf};
 use alloy_primitives::{Address, U256};
 use std::collections::BTreeMap;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 /// Represents a repurchase obligation for a bidder.
 pub struct RepurchaseObligation {
     /// The amount to be repurchased.
@@ -32,9 +34,6 @@ pub struct BidderAllocation {
     /// The bidder's repurchase obligation, if any.
     repurchase_obligation: RepurchaseObligation,
 }
-
-/// A map of bidder addresses to their respective allocations.
-pub type BidderAllocations = BTreeMap<Address, BidderAllocation>;
 
 impl Default for BidderAllocation {
     /// Creates a default `BidderAllocation` with zero amounts.
@@ -124,11 +123,38 @@ impl Allocation for BidderAllocation {
     }
 }
 
+/// A map of bidder addresses to their respective allocations.
+pub type BidderAllocations = BTreeMap<Address, BidderAllocation>;
+
+impl Allocations for BidderAllocations {
+    type Allocation = BidderAllocation;
+    type Order = Bid;
+
+    fn add_from_order(&mut self, order: &Self::Order) {
+        let bidder_allocation: &mut BidderAllocation = self.get_allocation(&order.bidder);
+        bidder_allocation.update_collateral_amount(order.collateral_amount);
+    }
+
+    fn get_allocation(&mut self, address: &Address) -> &mut Self::Allocation {
+        self.entry(*address).or_default()
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use crate::types::allocations::Allocations;
-
     use super::*;
+    use crate::types::{
+        allocations::{Allocations, AuctionResults},
+        bids::{
+            tests::{
+                random_bid_submission, random_collateralized_non_revealed_bid,
+                random_collateralized_revealed_bid, random_undercollateralized_bid,
+            },
+            Bids, ValidatedBids,
+        },
+        utils::get_key,
+        Order, PlacedOrders,
+    };
     use alloy_primitives::U256;
 
     #[test]
@@ -178,12 +204,49 @@ mod test {
     }
 
     #[test]
-    fn test_get_or_create_bidder_allocation() {
-        let mut allocations = Allocations::new(&Address::random());
-        let bidder_address = Address::random();
+    fn test_bidder_add_from_order() {
+        let mut bidder_allocations: BidderAllocations = BidderAllocations::new();
+
+        // Define two bids that originate from the same bidder
+        let bid_a: Bid = Bid::from_order_submission(&random_bid_submission());
+        let mut bid_b: Bid = Bid::from_order_submission(&random_bid_submission());
+        bid_b.bidder = bid_a.bidder;
+
+        // Defines an allocation from an order
+        bidder_allocations.add_from_order(&bid_a);
+
+        let allocation_a: &BidderAllocation = bidder_allocations.get(&bid_a.bidder).unwrap();
+        assert_eq!(allocation_a.collateral_amount, bid_a.collateral_amount);
+        assert_eq!(allocation_a.purchase_amount, U256::ZERO);
+        assert_eq!(
+            allocation_a.repurchase_obligation,
+            RepurchaseObligation::default()
+        );
+
+        // Correspondingly updates the allocation from adding another order
+        bidder_allocations.add_from_order(&bid_b);
+
+        let allocation_b: &BidderAllocation = bidder_allocations.get(&bid_a.bidder).unwrap();
+        assert_eq!(
+            allocation_b.collateral_amount,
+            bid_a.collateral_amount + bid_b.collateral_amount
+        );
+        assert_eq!(allocation_b.purchase_amount, U256::ZERO);
+        assert_eq!(
+            allocation_b.repurchase_obligation,
+            RepurchaseObligation::default()
+        );
+    }
+
+    #[test]
+    fn test_bidder_get_allocation() {
+        let mut auction_results: AuctionResults = AuctionResults::new(&Address::random());
+        let bidder_address: Address = Address::random();
 
         // Get a new bidder allocation
-        let bidder_allocation = allocations.get_or_create_bidder_allocation(&bidder_address);
+        let bidder_allocation: &mut BidderAllocation = auction_results
+            .bidder_allocations
+            .get_allocation(&bidder_address);
         assert_eq!(bidder_allocation.purchase_amount, U256::ZERO);
 
         // Modify the allocation
@@ -191,13 +254,98 @@ mod test {
         bidder_allocation.update_purchase_amount(update_amount);
 
         // Get the same allocation and check if it's modified
-        let same_allocation = allocations.get_or_create_bidder_allocation(&bidder_address);
+        let same_allocation: &mut BidderAllocation = auction_results
+            .bidder_allocations
+            .get_allocation(&bidder_address);
         assert_eq!(same_allocation.purchase_amount, update_amount);
 
         // Check that a new address creates a new allocation
-        let another_address = Address::random();
-        let another_allocation = allocations.get_or_create_bidder_allocation(&another_address);
+        let another_address: Address = Address::random();
+        let another_allocation: &mut BidderAllocation = auction_results
+            .bidder_allocations
+            .get_allocation(&another_address);
         assert_eq!(another_allocation.purchase_amount, U256::ZERO);
+    }
+
+    #[test]
+    fn test_validate_bids() {
+        let tokens: Tokens = random_tokens();
+
+        let mut bidder_allocations: BidderAllocations = BidderAllocations::new();
+        let revealed_bid: Bid =
+            random_collateralized_revealed_bid(&tokens.purchasePrice, &tokens.collateralPrice);
+        let undercollateralized_bid: Bid =
+            random_undercollateralized_bid(&tokens.purchasePrice, &tokens.collateralPrice);
+        let non_revealed_bid: Bid =
+            random_collateralized_non_revealed_bid(&tokens.purchasePrice, &tokens.collateralPrice);
+
+        let placed_bids: Bids = Bids::from([
+            (
+                get_key(&revealed_bid.bidder, &revealed_bid.id),
+                revealed_bid.clone(),
+            ),
+            (
+                get_key(&non_revealed_bid.bidder, &non_revealed_bid.id),
+                non_revealed_bid.clone(),
+            ),
+            (
+                get_key(&undercollateralized_bid.bidder, &undercollateralized_bid.id),
+                undercollateralized_bid.clone(),
+            ),
+        ]);
+
+        let validated_bids: ValidatedBids =
+            placed_bids.into_validated_orders(&tokens, &mut bidder_allocations);
+
+        // Revealed bid
+        assert_eq!(validated_bids.len(), 1);
+        assert_eq!(validated_bids[0], revealed_bid);
+
+        // Non revealed bid is added to allocations
+        assert_eq!(
+            bidder_allocations
+                .get(&non_revealed_bid.bidder)
+                .unwrap()
+                .collateral_amount,
+            non_revealed_bid.collateral_amount
+        );
+        assert_eq!(
+            bidder_allocations
+                .get(&non_revealed_bid.bidder)
+                .unwrap()
+                .purchase_amount,
+            U256::ZERO
+        );
+        assert_eq!(
+            bidder_allocations
+                .get(&non_revealed_bid.bidder)
+                .unwrap()
+                .repurchase_obligation,
+            RepurchaseObligation::default()
+        );
+
+        // Uncollateralized bid is added to allocations
+        assert_eq!(
+            bidder_allocations
+                .get(&undercollateralized_bid.bidder)
+                .unwrap()
+                .collateral_amount,
+            undercollateralized_bid.collateral_amount
+        );
+        assert_eq!(
+            bidder_allocations
+                .get(&undercollateralized_bid.bidder)
+                .unwrap()
+                .purchase_amount,
+            U256::ZERO
+        );
+        assert_eq!(
+            bidder_allocations
+                .get(&undercollateralized_bid.bidder)
+                .unwrap()
+                .repurchase_obligation,
+            RepurchaseObligation::default()
+        );
     }
 
     #[test]

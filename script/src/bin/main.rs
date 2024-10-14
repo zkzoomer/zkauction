@@ -54,14 +54,8 @@ fn main() {
 
     // Setup the inputs.
     let mut stdin = SP1Stdin::new();
-    let (
-        _prover_address,
-        bid_submissions,
-        offer_submissions,
-        bid_reveals,
-        offer_reveals,
-        token_prices,
-    ) = input::set_inputs(&mut stdin);
+    let (_prover_address, bid_submissions, offer_submissions, bid_reveals, offer_reveals, tokens) =
+        input::set_inputs(&mut stdin);
 
     if args.execute {
         // Execute the program
@@ -90,11 +84,12 @@ fn main() {
             expected_auction_result_root,
         ) = zkauction_lib::run_auction(
             &|x: &[u8]| keccak256(x),
+            &prover_address,
             &bid_submissions,
             &offer_submissions,
             &bid_reveals,
             &offer_reveals,
-            &token_prices,
+            &tokens,
         );
         assert_eq!(acc_bids_hash, expected_acc_bids_hash);
         assert_eq!(acc_offers_hash, expected_acc_offers_hash);

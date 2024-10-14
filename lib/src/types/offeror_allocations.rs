@@ -1,6 +1,10 @@
 use super::exit_tree::{ExitLeafRepoTokenWithdrawal, ExitLeafTokenWithdrawal, ExitLeaves};
+use super::offers::Offer;
 use super::tokens::Tokens;
-use super::{allocations::Allocation, exit_tree::ExitLeaf};
+use super::{
+    allocations::{Allocation, Allocations},
+    exit_tree::ExitLeaf,
+};
 use alloy_primitives::{Address, U256};
 use std::collections::BTreeMap;
 
@@ -11,9 +15,6 @@ pub struct OfferorAllocation {
     /// The amount of purchase tokens left on the table for the offeror, if any.
     purchase_amount: U256,
 }
-
-/// A map of offeror addresses to their respective allocations.
-pub type OfferorAllocations = BTreeMap<Address, OfferorAllocation>;
 
 impl Default for OfferorAllocation {
     /// Creates a default `OfferorAllocation` with zero amounts.
@@ -66,9 +67,34 @@ impl Allocation for OfferorAllocation {
     }
 }
 
+/// A map of offeror addresses to their respective allocations.
+pub type OfferorAllocations = BTreeMap<Address, OfferorAllocation>;
+
+impl Allocations for OfferorAllocations {
+    type Allocation = OfferorAllocation;
+    type Order = Offer;
+
+    fn add_from_order(&mut self, order: &Self::Order) {
+        let offeror_allocation: &mut OfferorAllocation = self.get_allocation(&order.offeror);
+        offeror_allocation.update_purchase_amount(order.amount);
+    }
+
+    fn get_allocation(&mut self, address: &Address) -> &mut Self::Allocation {
+        self.entry(*address).or_default()
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use crate::types::allocations::Allocations;
+    use crate::types::{
+        allocations::AuctionResults,
+        offers::{
+            tests::{random_non_revealed_offer, random_offer_submission, random_revealed_offer},
+            Offers, ValidatedOffers,
+        },
+        utils::get_key,
+        Order, PlacedOrders,
+    };
 
     use super::*;
     use alloy_primitives::U256;
@@ -94,12 +120,41 @@ mod test {
     }
 
     #[test]
-    fn test_get_or_create_offeror_allocation() {
-        let mut allocations = Allocations::new(&Address::random());
-        let offeror_address = Address::random();
+    fn test_offeror_add_from_order() {
+        let mut offeror_allocations: OfferorAllocations = OfferorAllocations::new();
+
+        // Define two offers that originate from the same offeror
+        let offer_a: Offer = Offer::from_order_submission(&random_offer_submission());
+        let mut offer_b: Offer = Offer::from_order_submission(&random_offer_submission());
+        offer_b.offeror = offer_a.offeror;
+
+        // Defines an allocation from an order
+        offeror_allocations.add_from_order(&offer_a);
+
+        let allocation_a: &OfferorAllocation = offeror_allocations.get(&offer_a.offeror).unwrap();
+        assert_eq!(allocation_a.repo_amount, U256::ZERO);
+        assert_eq!(allocation_a.purchase_amount, offer_a.amount);
+
+        // Correspondingly updates the allocation from adding another order
+        offeror_allocations.add_from_order(&offer_b);
+
+        let allocation_b: &OfferorAllocation = offeror_allocations.get(&offer_a.offeror).unwrap();
+        assert_eq!(allocation_b.repo_amount, U256::ZERO);
+        assert_eq!(
+            allocation_b.purchase_amount,
+            offer_a.amount + offer_b.amount
+        );
+    }
+
+    #[test]
+    fn test_offeror_get_allocation() {
+        let mut auction_results: AuctionResults = AuctionResults::new(&Address::random());
+        let offeror_address: Address = Address::random();
 
         // Get a new offeror allocation
-        let offeror_allocation = allocations.get_or_create_offeror_allocation(&offeror_address);
+        let offeror_allocation: &mut OfferorAllocation = auction_results
+            .offeror_allocations
+            .get_allocation(&offeror_address);
         assert_eq!(offeror_allocation.purchase_amount, U256::ZERO);
 
         // Modify the allocation
@@ -107,13 +162,60 @@ mod test {
         offeror_allocation.update_purchase_amount(update_amount);
 
         // Get the same allocation and check if it's modified
-        let same_allocation = allocations.get_or_create_offeror_allocation(&offeror_address);
+        let same_allocation: &mut OfferorAllocation = auction_results
+            .offeror_allocations
+            .get_allocation(&offeror_address);
         assert_eq!(same_allocation.purchase_amount, update_amount);
 
         // Check that a new address creates a new allocation
-        let another_address = Address::random();
-        let another_allocation = allocations.get_or_create_offeror_allocation(&another_address);
+        let another_address: Address = Address::random();
+        let another_allocation: &mut OfferorAllocation = auction_results
+            .offeror_allocations
+            .get_allocation(&another_address);
         assert_eq!(another_allocation.purchase_amount, U256::ZERO);
+    }
+
+    #[test]
+    fn test_validate_offers() {
+        let tokens: Tokens = random_tokens();
+
+        let mut offeror_allocations: OfferorAllocations = OfferorAllocations::new();
+        let revealed_offer: Offer = random_revealed_offer();
+        let non_revealed_offer: Offer = random_non_revealed_offer();
+
+        let placed_offers: Offers = Offers::from([
+            (
+                get_key(&revealed_offer.offeror, &revealed_offer.id),
+                revealed_offer.clone(),
+            ),
+            (
+                get_key(&non_revealed_offer.offeror, &non_revealed_offer.id),
+                non_revealed_offer.clone(),
+            ),
+        ]);
+
+        let validated_offers: ValidatedOffers =
+            placed_offers.into_validated_orders(&tokens, &mut offeror_allocations);
+
+        // Revealed offer
+        assert_eq!(validated_offers.len(), 1);
+        assert_eq!(validated_offers[0], revealed_offer);
+
+        // Non revealed offer is added to allocations
+        assert_eq!(
+            offeror_allocations
+                .get(&non_revealed_offer.offeror)
+                .unwrap()
+                .purchase_amount,
+            non_revealed_offer.amount
+        );
+        assert_eq!(
+            offeror_allocations
+                .get(&non_revealed_offer.offeror)
+                .unwrap()
+                .repo_amount,
+            U256::ZERO
+        );
     }
 
     #[test]
@@ -122,7 +224,7 @@ mod test {
 
         // Empty offeror allocation pushes no new leaf
         let mut exit_leaves: ExitLeaves = ExitLeaves::new();
-        let offeror_address = Address::random();
+        let offeror_address: Address = Address::random();
         let offeror_allocation: OfferorAllocation = OfferorAllocation::default();
         offeror_allocation.into_exit_leaves(offeror_address, &tokens, &mut exit_leaves);
         assert_eq!(exit_leaves.len(), 0);

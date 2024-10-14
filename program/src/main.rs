@@ -27,16 +27,17 @@ pub fn main() {
     let bid_reveals: BidReveals = sp1_zkvm::io::read::<BidReveals>();
     let offer_reveals: OfferReveals = sp1_zkvm::io::read::<OfferReveals>();
     // Read token information at the time of proof verification
-    let token_prices: Tokens = sp1_zkvm::io::read::<Tokens>();
+    let tokens: Tokens = sp1_zkvm::io::read::<Tokens>();
 
     // Compute public values encoding the auction and its results
     let (acc_bids_hash, acc_offers_hash, token_prices_hash, auction_result_root) = run_auction(
         &sp1_keccak256,
+        &prover_address,
         &bid_submissions,
         &offer_submissions,
         &bid_reveals,
         &offer_reveals,
-        &token_prices,
+        &tokens,
     );
 
     // Encode the public values of the program.

@@ -1,23 +1,10 @@
 use super::{
-    bidder_allocations::{BidderAllocation, BidderAllocations},
+    bidder_allocations::BidderAllocations,
     exit_tree::{ExitLeaf, ExitLeafTokenWithdrawal, ExitLeaves},
-    offeror_allocations::{OfferorAllocation, OfferorAllocations},
+    offeror_allocations::OfferorAllocations,
     tokens::Tokens,
 };
 use alloy_primitives::{Address, U256};
-
-/// Trait for converting allocations into exit leaves
-pub trait Allocation {
-    /// Converts the allocation mapping into exit leaves and adds them to the `exit_leaves` vector.
-    ///
-    /// # Arguments
-    ///
-    /// * `self` - The allocation to convert.
-    /// * `address` - The address associated with this allocation.
-    /// * `tokens` - A reference to the `Tokens` struct containing token information.
-    /// * `exit_leaves` - A mutable reference to the vector of exit leaves to update.
-    fn into_exit_leaves(self, address: Address, tokens: &Tokens, exit_leaves: &mut ExitLeaves);
-}
 
 /// Represents the allocation for the prover, which is credited with all the accrued fees
 pub struct ProverAllocation {
@@ -68,63 +55,66 @@ impl ProverAllocation {
     }
 }
 
-/// Represents all allocations in the system
-pub struct Allocations {
-    /// The prover's allocation
-    prover_allocation: ProverAllocation,
-    /// The allocations for each of the bidders in the auction
-    bidder_allocations: BidderAllocations,
-    /// The allocations for each of the offerors in the auction
-    offeror_allocations: OfferorAllocations,
+/// Trait for converting allocations into exit leaves
+pub trait Allocation {
+    /// Converts the allocation mapping into exit leaves and adds them to the `exit_leaves` vector.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The allocation to convert.
+    /// * `address` - The address associated with this allocation.
+    /// * `tokens` - A reference to the `Tokens` struct containing token information.
+    /// * `exit_leaves` - A mutable reference to the vector of exit leaves to update.
+    fn into_exit_leaves(self, address: Address, tokens: &Tokens, exit_leaves: &mut ExitLeaves);
 }
 
-impl Allocations {
-    /// Creates a new Allocations instance with the given prover address
+/// Trait for fetching allocations and defining them from invalid orders
+pub trait Allocations {
+    type Allocation;
+    type Order;
+
+    /// Returns a mutable reference to the allocation for the given address
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The allocations instance
+    /// * `address` - The address being queried
+    fn get_allocation(&mut self, address: &Address) -> &mut Self::Allocation;
+
+    /// Creates or updates an allocation from an order
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The allocations instance
+    /// * `order` - The order being added to the allocations
+    fn add_from_order(&mut self, order: &Self::Order);
+}
+
+/// Represents the results of the auction
+pub struct AuctionResults {
+    /// The prover's allocation
+    pub prover_allocation: ProverAllocation,
+    /// The allocations for each of the bidders in the auction
+    pub bidder_allocations: BidderAllocations,
+    /// The allocations for each of the offerors in the auction
+    pub offeror_allocations: OfferorAllocations,
+}
+
+impl AuctionResults {
+    /// Creates a new AuctionResults instance with the given prover address
     ///
     /// # Arguments
     ///
     /// * `prover_address` - The address of the prover.
     pub fn new(prover_address: &Address) -> Self {
-        Allocations {
+        AuctionResults {
             prover_allocation: ProverAllocation::new(prover_address),
             bidder_allocations: BidderAllocations::new(),
             offeror_allocations: OfferorAllocations::new(),
         }
     }
 
-    /// Returns a mutable reference to the prover allocation
-    ///
-    /// # Arguments
-    ///
-    /// * `self` - The allocations instance
-    pub fn get_or_create_prover_allocation(&mut self) -> &mut ProverAllocation {
-        &mut self.prover_allocation
-    }
-
-    /// Returns a mutable reference to the bidder allocation for the given address
-    ///
-    /// # Arguments
-    ///
-    /// * `self` - The allocations instance
-    /// * `address` - The bidder's address
-    pub fn get_or_create_bidder_allocation(&mut self, address: &Address) -> &mut BidderAllocation {
-        self.bidder_allocations.entry(*address).or_default()
-    }
-
-    /// Returns a mutable reference to the offeror allocation for the given address
-    ///
-    /// # Arguments
-    ///
-    /// * `self` - The allocations instance
-    /// * `address` - The offeror's address
-    pub fn get_or_create_offeror_allocation(
-        &mut self,
-        address: &Address,
-    ) -> &mut OfferorAllocation {
-        self.offeror_allocations.entry(*address).or_default()
-    }
-
-    /// Converts all allocations into exit leaves
+    /// Converts all auction result allocations into exit leaves
     ///
     /// # Arguments
     ///
@@ -148,10 +138,12 @@ impl Allocations {
 mod test {
     use super::*;
     use crate::types::{
+        bidder_allocations::BidderAllocation,
         exit_tree::{
             ExitLeaf, ExitLeafRepoTokenWithdrawal, ExitLeafRepurchaseObligation,
             ExitLeafTokenWithdrawal,
         },
+        offeror_allocations::OfferorAllocation,
         tokens::Tokens,
     };
     use alloy_primitives::{Address, U256};
@@ -194,42 +186,20 @@ mod test {
     }
 
     #[test]
-    fn test_get_or_create_prover_allocation() {
-        let prover_address: Address = Address::random();
-        let mut allocations: Allocations = Allocations::new(&prover_address);
-
-        // Get the prover allocation
-        let prover_allocation: &mut ProverAllocation =
-            allocations.get_or_create_prover_allocation();
-
-        // Check that the prover address matches
-        assert_eq!(prover_allocation.prover_address, prover_address);
-
-        // Modify the allocation
-        let update_amount: U256 = U256::from(rand::random::<u64>());
-        prover_allocation.update_purchase_amount(update_amount);
-
-        // Get the allocation again and check if it's the same (modified) instance
-        let same_allocation: &mut ProverAllocation = allocations.get_or_create_prover_allocation();
-        assert_eq!(same_allocation.purchase_amount, update_amount);
-    }
-
-    #[test]
     fn test_into_exit_leaves() {
         let tokens: Tokens = random_tokens();
         let mut exit_leaves: ExitLeaves = ExitLeaves::new();
-        let mut allocations: Allocations = Allocations::new(&Address::random());
+        let mut auction_results: AuctionResults = AuctionResults::new(&Address::random());
 
         // Add offeror allocation
         let offeror_address: Address = Address::random();
         let offeror_repo_amount: U256 = U256::from(100);
         let offeror_purchase_amount: U256 = U256::from(200);
-        allocations
-            .get_or_create_offeror_allocation(&offeror_address)
-            .update_repo_amount(offeror_repo_amount);
-        allocations
-            .get_or_create_offeror_allocation(&offeror_address)
-            .update_purchase_amount(offeror_purchase_amount);
+        let offeror_allocation: &mut OfferorAllocation = auction_results
+            .offeror_allocations
+            .get_allocation(&offeror_address);
+        offeror_allocation.update_repo_amount(offeror_repo_amount);
+        offeror_allocation.update_purchase_amount(offeror_purchase_amount);
 
         // Add bidder allocation
         let bidder_address: Address = Address::random();
@@ -237,18 +207,16 @@ mod test {
         let bidder_collateral_amount: U256 = U256::from(400);
         let bidder_repurchase_amount: U256 = U256::from(500);
         let bidder_repurchase_collateral: U256 = U256::from(600);
-        allocations
-            .get_or_create_bidder_allocation(&bidder_address)
-            .update_purchase_amount(bidder_purchase_amount);
-        allocations
-            .get_or_create_bidder_allocation(&bidder_address)
-            .update_collateral_amount(bidder_collateral_amount);
-        allocations
-            .get_or_create_bidder_allocation(&bidder_address)
+        let bidder_allocation: &mut BidderAllocation = auction_results
+            .bidder_allocations
+            .get_allocation(&bidder_address);
+        bidder_allocation.update_purchase_amount(bidder_purchase_amount);
+        bidder_allocation.update_collateral_amount(bidder_collateral_amount);
+        bidder_allocation
             .update_repurchase_obligation(bidder_repurchase_amount, bidder_repurchase_collateral);
 
         // Convert allocations to exit leaves
-        allocations.into_exit_leaves(&tokens, &mut exit_leaves);
+        auction_results.into_exit_leaves(&tokens, &mut exit_leaves);
 
         // Check the number of exit leaves
         assert_eq!(exit_leaves.len(), 5);

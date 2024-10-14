@@ -1,4 +1,5 @@
 use super::exit_tree::ExitLeafTokenWithdrawal;
+use super::offeror_allocations::OfferorAllocation;
 use super::tokens::Tokens;
 use super::utils::{add_to_hash_chain, get_key, get_price_hash};
 use super::{ChainableSubmissions, Order, PlacedOrders, ValidatedOrders};
@@ -85,6 +86,7 @@ pub type Offers = BTreeMap<B256, Offer>;
 
 impl PlacedOrders for Offers {
     type OrderSubmission = OfferSubmission;
+    type Allocation = OfferorAllocation;
     type Order = Offer;
 
     /// # Behavior
@@ -197,12 +199,9 @@ impl ValidatedOrders for ValidatedOffers {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
-    use crate::types::{
-        exit_tree::{ExitLeaf, ExitLeaves},
-        utils::test::calculate_expected_hash_chain_output,
-    };
+    use crate::types::{utils::test::calculate_expected_hash_chain_output, PlacedOrders};
     use alloy_primitives::keccak256;
 
     #[test]
@@ -398,34 +397,6 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_offers() {
-        let mut placed_offers: Offers = Offers::new();
-        let mut exit_leaves: ExitLeaves = ExitLeaves::new();
-        let tokens: Tokens = random_tokens();
-        let revealed_offer: Offer = random_revealed_offer();
-        let non_revealed_offer: Offer = random_non_revealed_offer();
-
-        placed_offers.insert(
-            get_key(&revealed_offer.offeror, &revealed_offer.id),
-            revealed_offer.clone(),
-        );
-        placed_offers.insert(
-            get_key(&non_revealed_offer.offeror, &non_revealed_offer.id),
-            non_revealed_offer.clone(),
-        );
-
-        let validated_offers = placed_offers.into_validated_orders(&tokens, &mut exit_leaves);
-
-        assert_eq!(validated_offers.len(), 1);
-        assert_eq!(exit_leaves.len(), 1);
-        assert_eq!(validated_offers[0], revealed_offer);
-        assert_eq!(
-            exit_leaves[0],
-            ExitLeaf::TokenWithdrawal(non_revealed_offer.to_exit_leaf(&tokens))
-        );
-    }
-
-    #[test]
     fn test_validated_offers_sort_orders() {
         let mut offers: ValidatedOffers = vec![
             random_revealed_offer(),
@@ -439,7 +410,7 @@ mod tests {
 
     // HELPER FUNCTIONS
     /// Creates a new OfferSubmission with random values for testing purposes.
-    fn random_offer_submission() -> OfferSubmission {
+    pub fn random_offer_submission() -> OfferSubmission {
         OfferSubmission {
             offeror: Address::random(),
             id: U96::from(rand::random::<u64>()),
@@ -459,7 +430,7 @@ mod tests {
     }
 
     /// Creates a random revealed Offer.
-    fn random_revealed_offer() -> Offer {
+    pub fn random_revealed_offer() -> Offer {
         Offer {
             id: U96::from(rand::random::<u64>()),
             offeror: Address::random(),
@@ -473,7 +444,7 @@ mod tests {
     }
 
     /// Creates a random non-revealed Offer.
-    fn random_non_revealed_offer() -> Offer {
+    pub fn random_non_revealed_offer() -> Offer {
         Offer {
             id: U96::from(rand::random::<u64>()),
             offeror: Address::random(),

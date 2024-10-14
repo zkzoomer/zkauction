@@ -1,3 +1,4 @@
+use super::bidder_allocations::BidderAllocation;
 use super::exit_tree::ExitLeafTokenWithdrawal;
 use super::tokens::Tokens;
 use super::utils::{add_to_hash_chain, get_key, get_price_hash};
@@ -107,6 +108,7 @@ pub type Bids = BTreeMap<B256, Bid>;
 
 impl PlacedOrders for Bids {
     type OrderSubmission = BidSubmission;
+    type Allocation = BidderAllocation;
     type Order = Bid;
 
     /// # Behavior
@@ -219,9 +221,9 @@ impl ChainableSubmissions for BidReveals {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
-    use crate::types::{exit_tree::ExitLeaves, utils::test::calculate_expected_hash_chain_output};
+    use crate::types::{utils::test::calculate_expected_hash_chain_output, PlacedOrders};
     use alloy_primitives::keccak256;
 
     #[test]
@@ -424,50 +426,6 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_bids() {
-        let tokens: Tokens = random_tokens();
-
-        let mut exit_leaves: ExitLeaves = ExitLeaves::new();
-        let revealed_bid: Bid =
-            random_collateralized_revealed_bid(&tokens.purchasePrice, &tokens.collateralPrice);
-        let undercollateralized_bid: Bid =
-            random_undercollateralized_bid(&tokens.purchasePrice, &tokens.collateralPrice);
-        let non_revealed_bid: Bid =
-            random_collateralized_non_revealed_bid(&tokens.purchasePrice, &tokens.collateralPrice);
-
-        let placed_bids: Bids = Bids::from([
-            (
-                get_key(&revealed_bid.bidder, &revealed_bid.id),
-                revealed_bid.clone(),
-            ),
-            (
-                get_key(&non_revealed_bid.bidder, &non_revealed_bid.id),
-                non_revealed_bid.clone(),
-            ),
-            (
-                get_key(&undercollateralized_bid.bidder, &undercollateralized_bid.id),
-                undercollateralized_bid.clone(),
-            ),
-        ]);
-
-        let validated_bids: ValidatedBids =
-            placed_bids.into_validated_orders(&tokens, &mut exit_leaves);
-
-        assert_eq!(validated_bids.len(), 1);
-        assert_eq!(exit_leaves.len(), 2);
-        // TODO: fix these assertions, why won't they work?
-        /* assert_eq!(validated_bids[0], revealed_bid);
-        assert_eq!(
-            exit_leaves[0],
-            ExitLeaf::Withdrawal(non_revealed_bid.to_exit_leaf())
-        );
-        assert_eq!(
-            exit_leaves[1],
-            ExitLeaf::Withdrawal(undercollateralized_bid.to_exit_leaf())
-        ); */
-    }
-
-    #[test]
     fn test_validated_bids_sort_orders() {
         let mut bids: ValidatedBids = vec![
             random_revealed_bid(),
@@ -481,7 +439,7 @@ mod tests {
 
     // HELPER FUNCTIONS
     /// Creates a new BidSubmission with random values for testing purposes.
-    fn random_bid_submission() -> BidSubmission {
+    pub fn random_bid_submission() -> BidSubmission {
         BidSubmission {
             bidder: Address::random(),
             id: U96::from(rand::random::<u64>()),
