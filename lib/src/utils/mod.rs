@@ -19,7 +19,9 @@ pub fn compute_clearing_rate(bids: &ValidatedBids, offers: &ValidatedOffers) -> 
         return U256::ZERO;
     }
 
-    (bids[1].bid_price_revealed + offers[1].offer_price_revealed) / U256::from(2)
+    // Bids and offers are inversely ordered: the most competitive bid/offer is located at the last index of the array
+    (bids[bids.len() - 2].bid_price_revealed + offers[offers.len() - 2].offer_price_revealed)
+        / U256::from(2)
 }
 
 #[cfg(test)]
@@ -37,10 +39,14 @@ mod tests {
             random_validated_bid(),
             random_validated_bid(),
             random_validated_bid(),
+            random_validated_bid(),
         ];
         validated_bids.sort_orders();
         // Creat sample offers
         let mut validated_offers: ValidatedOffers = vec![
+            random_validated_offer(),
+            random_validated_offer(),
+            random_validated_offer(),
             random_validated_offer(),
             random_validated_offer(),
             random_validated_offer(),
@@ -52,7 +58,8 @@ mod tests {
         // Expected clearing rate: (90 + 80) / 2 = 85
         assert_eq!(
             clearing_rate,
-            (validated_bids[1].bid_price_revealed + validated_offers[1].offer_price_revealed)
+            (validated_bids[validated_bids.len() - 2].bid_price_revealed
+                + validated_offers[validated_offers.len() - 2].offer_price_revealed)
                 / U256::from(2)
         );
 

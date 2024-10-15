@@ -137,6 +137,7 @@ pub type ValidatedBids = Vec<Bid>;
 impl ValidatedOrders for ValidatedBids {
     type Order = Bid;
 
+    /// Inversely sorts bids from least competitive to most competitive, such that the last item in the list is the most competitive bid
     fn sort_orders(&mut self) {
         self.sort_by(|a: &Bid, b: &Bid| a.bid_price_revealed.cmp(&b.bid_price_revealed));
     }

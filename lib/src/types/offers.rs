@@ -193,6 +193,7 @@ pub type ValidatedOffers = Vec<Offer>;
 impl ValidatedOrders for ValidatedOffers {
     type Order = Offer;
 
+    /// Inversely sorts offers from least competitive to most competitive, such that the last item in the list is the most competitive offer
     fn sort_orders(&mut self) {
         self.sort_by(|a: &Offer, b: &Offer| b.offer_price_revealed.cmp(&a.offer_price_revealed));
     }
