@@ -78,7 +78,7 @@ pub fn run_auction<F: Fn(&[u8]) -> B256>(
         && validated_bids.last().unwrap().bid_price_revealed
             >= validated_offers.first().unwrap().offer_price_revealed
     {
-        let (max_assignable, clearing_rate) =
+        let (clearing_rate, max_assignable) =
             compute_clearing_price(&validated_bids, &validated_offers);
 
         // Assign bids and offers
