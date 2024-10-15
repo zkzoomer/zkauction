@@ -74,11 +74,10 @@ pub fn run_auction<F: Fn(&[u8]) -> B256>(
     let clearing_rate: U256 = compute_clearing_rate(&validated_bids, &validated_offers);
     // Match bids and offers
     auction_match(
-        tokens,
         clearing_rate,
-        &mut validated_bids,
-        &mut validated_offers,
-        &auction_results,
+        validated_bids,
+        validated_offers,
+        &mut auction_results,
     );
 
     // Define the exit leaves
