@@ -71,10 +71,11 @@ pub fn run_auction<F: Fn(&[u8]) -> B256>(
     validated_offers.sort_orders();
 
     // Compute auction clearing price
-    let _clearing_rate: U256 = compute_clearing_rate(&validated_bids, &validated_offers);
+    let clearing_rate: U256 = compute_clearing_rate(&validated_bids, &validated_offers);
     // Match bids and offers
     auction_match(
         tokens,
+        clearing_rate,
         &mut validated_bids,
         &mut validated_offers,
         &auction_results,
