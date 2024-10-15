@@ -67,9 +67,9 @@ pub fn run_auction<F: Fn(&[u8]) -> B256>(
     let mut validated_offers: ValidatedOffers =
         offers.into_validated_orders(tokens, &mut auction_results.offeror_allocations);
 
-    // Sort validated bids by ascending price
+    // Sort validated bids by *ascending* price. Orders right on the price edge will be partially filled.
     validated_bids.sort_orders();
-    // Sort validated offers by descending price
+    // Sort validated offers by *ascending* price. Orders right on the price edge will be partially filled.
     validated_offers.sort_orders();
 
     // Calculate a clearing price and assign bids and offers only if both bids and offers exist and market intersects

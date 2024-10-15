@@ -196,9 +196,10 @@ impl ValidatedOrders for ValidatedOffers {
     type Order = Offer;
     type Allocation = OfferorAllocation;
 
-    /// Inversely sorts offers from least competitive to most competitive, such that the last item in the list is the most competitive offer
+    /// Sorts offers from most competitive to least competitive, such that the first item in the list is the most competitive offer
+    /// This is done to follow Term Finance's logic for computing the clearing price later on
     fn sort_orders(&mut self) {
-        self.sort_by(|a: &Offer, b: &Offer| b.offer_price_revealed.cmp(&a.offer_price_revealed));
+        self.sort_by(|a: &Offer, b: &Offer| a.offer_price_revealed.cmp(&b.offer_price_revealed));
     }
 }
 
@@ -409,8 +410,8 @@ pub mod tests {
             random_revealed_offer(),
         ];
         offers.sort_orders();
-        assert!(offers[0].offer_price_revealed >= offers[1].offer_price_revealed);
-        assert!(offers[1].offer_price_revealed >= offers[2].offer_price_revealed);
+        assert!(offers[0].offer_price_revealed <= offers[1].offer_price_revealed);
+        assert!(offers[1].offer_price_revealed <= offers[2].offer_price_revealed);
     }
 
     #[test]
