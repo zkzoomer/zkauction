@@ -1,6 +1,3 @@
-#[cfg(test)]
-mod tests;
-
 use alloy_primitives::B256;
 use tiny_keccak::{Hasher, Keccak};
 
@@ -19,4 +16,19 @@ pub fn sp1_keccak256(bytes: &[u8]) -> B256 {
     let mut output = [0u8; 32];
     hasher.finalize(&mut output);
     output.into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloy_primitives::keccak256;
+
+    #[test]
+    fn test_sp1_keccak256() {
+        let input: [u8; 32] = [1u8; 32];
+        let expected_output = keccak256(input);
+
+        let output: B256 = sp1_keccak256(&input);
+        assert_eq!(output, expected_output);
+    }
 }
