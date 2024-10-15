@@ -13,3 +13,4 @@ tiny-keccak = { git = "https://github.com/sp1-patches/tiny-keccak", branch = "pa
 [dev-dependencies]
 alloy-core = { version = "0.8.5", features = ["serde", "dyn-abi", "getrandom"] }
 rand = "0.8.5"
+lean-imt = { path = "../lean_imt" }

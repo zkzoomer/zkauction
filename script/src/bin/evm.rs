@@ -15,7 +15,7 @@ use clap::{Parser, ValueEnum};
 use serde::{Deserialize, Serialize};
 use sp1_sdk::{HashableKey, ProverClient, SP1ProofWithPublicValues, SP1Stdin, SP1VerifyingKey};
 use std::path::PathBuf;
-use zkauction_lib::types::PublicValuesStruct;
+use zkauction_lib::orders::PublicValuesStruct;
 
 // Adjust this path based on the actual location of input.rs
 #[path = "../lib/input.rs"]

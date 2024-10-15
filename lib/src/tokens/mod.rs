@@ -1,5 +1,5 @@
-use crate::types::HashableStruct;
-use alloy_sol_types::sol;
+use alloy_primitives::B256;
+use alloy_sol_types::{sol, SolValue};
 use serde::{Deserialize, Serialize};
 
 sol! {
@@ -14,6 +14,19 @@ sol! {
         address collateralToken;
         /// The oracle price of the collateral token at proof verification time
         uint256 collateralPrice;
+    }
+}
+
+/// Trait for Solidity structs that can be hashed via first calling `abi.encodePacked`.
+pub trait HashableStruct: SolValue {
+    /// Computes a single hash value from the struct's fields by first calling `abi.encodePacked`.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The struct to hash.
+    /// * `hash_function` - A function that computes a 32-byte hash from a byte slice.
+    fn hash<F: Fn(&[u8]) -> B256>(&self, hash_function: &F) -> B256 {
+        hash_function(&self.abi_encode_packed())
     }
 }
 

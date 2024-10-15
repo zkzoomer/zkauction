@@ -14,7 +14,7 @@ use alloy_primitives::keccak256;
 use alloy_sol_types::SolType;
 use clap::Parser;
 use sp1_sdk::{ProverClient, SP1Stdin};
-use zkauction_lib::types::PublicValuesStruct;
+use zkauction_lib::orders::PublicValuesStruct;
 
 // Adjust this path based on the actual location of input.rs
 #[path = "../lib/input.rs"]

@@ -1,10 +1,13 @@
-use super::allocations::Allocations;
-use super::bids::Bid;
-use super::exit_tree::{ExitLeafRepurchaseObligation, ExitLeafTokenWithdrawal, ExitLeaves};
-use super::tokens::Tokens;
-use super::{allocations::Allocation, exit_tree::ExitLeaf};
 use alloy_primitives::{Address, U256};
 use std::collections::BTreeMap;
+
+use crate::{
+    exit_tree::{ExitLeaf, ExitLeafRepurchaseObligation, ExitLeafTokenWithdrawal, ExitLeaves},
+    orders::bids::Bid,
+    tokens::Tokens,
+};
+
+use super::{Allocation, Allocations};
 
 #[derive(PartialEq, Debug)]
 /// Represents a repurchase obligation for a bidder.
@@ -142,19 +145,22 @@ impl Allocations for BidderAllocations {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::types::{
-        allocations::{Allocations, AuctionResults},
-        bids::{
-            tests::{
-                random_bid_submission, random_collateralized_non_revealed_bid,
-                random_collateralized_revealed_bid, random_undercollateralized_bid,
+    use crate::{
+        allocations::AuctionResults,
+        orders::{
+            bids::{
+                tests::{
+                    random_bid_submission, random_collateralized_non_revealed_bid,
+                    random_collateralized_revealed_bid, random_undercollateralized_bid,
+                },
+                Bids, ValidatedBids,
             },
-            Bids, ValidatedBids,
+            Order, PlacedOrders,
         },
         utils::get_key,
-        Order, PlacedOrders,
     };
+
+    use super::*;
     use alloy_primitives::U256;
 
     #[test]

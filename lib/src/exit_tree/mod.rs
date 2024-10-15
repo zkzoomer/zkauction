@@ -127,8 +127,8 @@ impl ExitTree for ExitLeaves {
 mod tests {
     use super::*;
     use crate::precompiles::sp1_keccak256;
-    use crate::utils::lean_imt::LeanIncrementalMerkleTree;
     use alloy_primitives::{keccak256, Address, B256, U256};
+    use lean_imt::LeanIncrementalMerkleTree;
     use rand::{
         distributions::{Distribution, Standard},
         Rng,

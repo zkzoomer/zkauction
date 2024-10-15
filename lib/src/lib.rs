@@ -1,20 +1,22 @@
+pub mod allocations;
 pub mod auction;
 pub mod constants;
+pub mod exit_tree;
+pub mod orders;
 pub mod precompiles;
-pub mod types;
+pub mod tokens;
 pub mod utils;
 
-use alloy_primitives::{Address, B256, U256};
-use auction::auction_match;
-use types::{
-    allocations::AuctionResults,
+use allocations::AuctionResults;
+use alloy_primitives::{Address, B256};
+use auction::{compute_clearing_price, Assignable};
+use exit_tree::{ExitLeaves, ExitTree};
+use orders::{
     bids::{BidReveals, BidSubmissions, Bids, ValidatedBids},
-    exit_tree::{ExitLeaves, ExitTree},
     offers::{OfferReveals, OfferSubmissions, Offers, ValidatedOffers},
-    tokens::Tokens,
-    ChainableSubmissions, HashableStruct, PlacedOrders, ValidatedOrders,
+    ChainableSubmissions, PlacedOrders, ValidatedOrders,
 };
-use utils::compute_clearing_rate;
+use tokens::{HashableStruct, Tokens};
 
 /// Executes the auction process and computes the public values.
 ///
@@ -70,15 +72,23 @@ pub fn run_auction<F: Fn(&[u8]) -> B256>(
     // Sort validated offers by descending price
     validated_offers.sort_orders();
 
-    // Compute auction clearing price
-    let clearing_rate: U256 = compute_clearing_rate(&validated_bids, &validated_offers);
-    // Match bids and offers
-    auction_match(
-        clearing_rate,
-        validated_bids,
-        validated_offers,
-        &mut auction_results,
-    );
+    // Calculate a clearing price and assign bids and offers only if both bids and offers exist and market intersects
+    if !validated_bids.is_empty()
+        && !validated_offers.is_empty()
+        && validated_bids.last().unwrap().bid_price_revealed
+            >= validated_offers.first().unwrap().offer_price_revealed
+    {
+        let (max_assignable, clearing_rate) =
+            compute_clearing_price(&validated_bids, &validated_offers);
+
+        // Assign bids and offers
+        validated_bids.assign(&max_assignable, &clearing_rate);
+        validated_offers.assign(&max_assignable, &clearing_rate);
+    } else {
+        // Dump all validated bids and offers to their corresponding allocations
+        validated_bids.unlock_outstanding_orders(&mut auction_results.bidder_allocations);
+        validated_offers.unlock_outstanding_orders(&mut auction_results.offeror_allocations);
+    }
 
     // Define the exit leaves
     let mut exit_leaves: ExitLeaves = ExitLeaves::new();

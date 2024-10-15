@@ -6,12 +6,17 @@
 sp1_zkvm::entrypoint!(main);
 
 use alloy_primitives::Address;
-use alloy_sol_types::SolType;
-use zkauction_lib::precompiles::sp1_keccak256;
-use zkauction_lib::types::bids::{BidReveals, BidSubmissions};
-use zkauction_lib::types::offers::{OfferReveals, OfferSubmissions};
-use zkauction_lib::types::tokens::Tokens;
-use zkauction_lib::{run_auction, types::PublicValuesStruct};
+use alloy_sol_types::SolValue;
+use zkauction_lib::{
+    orders::{
+        bids::{BidReveals, BidSubmissions},
+        offers::{OfferReveals, OfferSubmissions},
+        PublicValuesStruct,
+    },
+    precompiles::sp1_keccak256,
+    run_auction,
+    tokens::Tokens,
+};
 
 /// The main function of the program, reads the auction inputs, computes the auction results commitment,
 /// and commits to the public values of the proof.

@@ -1,0 +1,11 @@
+[package]
+name = "lean-imt"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+alloy-primitives.workspace = true
+
+[dev-dependencies]
+alloy-core = { version = "0.8.5", features = ["getrandom"] }
+rand = "0.8.5"

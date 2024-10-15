@@ -1,9 +1,11 @@
-use super::bidder_allocations::BidderAllocation;
-use super::exit_tree::ExitLeafTokenWithdrawal;
-use super::tokens::Tokens;
-use super::utils::{add_to_hash_chain, get_key, get_price_hash};
 use super::{ChainableSubmissions, Order, PlacedOrders, ValidatedOrders};
-use crate::constants::{BPS, INITIAL_COLLATERAL_RATIO, MAX_BID_PRICE};
+use crate::{
+    allocations::bidder_allocations::BidderAllocation,
+    constants::{BPS, INITIAL_COLLATERAL_RATIO, MAX_BID_PRICE},
+    exit_tree::ExitLeafTokenWithdrawal,
+    tokens::Tokens,
+    utils::{add_to_hash_chain, get_key, get_price_hash},
+};
 use alloy_primitives::{aliases::U96, Address, B256, U256};
 use alloy_sol_types::sol;
 use serde::{Deserialize, Serialize};
@@ -136,6 +138,7 @@ pub type ValidatedBids = Vec<Bid>;
 
 impl ValidatedOrders for ValidatedBids {
     type Order = Bid;
+    type Allocation = BidderAllocation;
 
     /// Inversely sorts bids from least competitive to most competitive, such that the last item in the list is the most competitive bid
     fn sort_orders(&mut self) {
@@ -223,8 +226,9 @@ impl ChainableSubmissions for BidReveals {
 
 #[cfg(test)]
 pub mod tests {
+    use crate::{allocations::AuctionResults, utils::test::calculate_expected_hash_chain_output};
+
     use super::*;
-    use crate::types::{utils::test::calculate_expected_hash_chain_output, PlacedOrders};
     use alloy_primitives::keccak256;
 
     #[test]
@@ -436,6 +440,17 @@ pub mod tests {
         bids.sort_orders();
         assert!(bids[0].bid_price_revealed <= bids[1].bid_price_revealed);
         assert!(bids[1].bid_price_revealed <= bids[2].bid_price_revealed);
+    }
+
+    #[test]
+    fn test_validated_bids_unlock_outstanding_orders() {
+        let prover_address: Address = Address::random();
+        let mut auction_results: AuctionResults = AuctionResults::new(&prover_address);
+        let validated_bids: ValidatedBids = ValidatedBids::from([random_revealed_bid()]);
+        validated_bids.unlock_outstanding_orders(&mut auction_results.bidder_allocations);
+
+        // Allocations get assigned
+        assert_eq!(auction_results.bidder_allocations.len(), 1);
     }
 
     // HELPER FUNCTIONS

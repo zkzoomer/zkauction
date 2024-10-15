@@ -1,12 +1,13 @@
-use super::exit_tree::{ExitLeafRepoTokenWithdrawal, ExitLeafTokenWithdrawal, ExitLeaves};
-use super::offers::Offer;
-use super::tokens::Tokens;
-use super::{
-    allocations::{Allocation, Allocations},
-    exit_tree::ExitLeaf,
-};
 use alloy_primitives::{Address, U256};
 use std::collections::BTreeMap;
+
+use crate::{
+    exit_tree::{ExitLeaf, ExitLeafRepoTokenWithdrawal, ExitLeafTokenWithdrawal, ExitLeaves},
+    orders::offers::Offer,
+    tokens::Tokens,
+};
+
+use super::{Allocation, Allocations};
 
 /// Represents the allocation for an offeror in the auction.
 pub struct OfferorAllocation {
@@ -86,14 +87,17 @@ impl Allocations for OfferorAllocations {
 
 #[cfg(test)]
 mod test {
-    use crate::types::{
+
+    use crate::{
         allocations::AuctionResults,
-        offers::{
-            tests::{random_non_revealed_offer, random_offer_submission, random_revealed_offer},
-            Offers, ValidatedOffers,
+        orders::{
+            offers::{
+                tests::{random_offer_submission, random_revealed_offer},
+                Offers, ValidatedOffers,
+            },
+            Order, PlacedOrders,
         },
         utils::get_key,
-        Order, PlacedOrders,
     };
 
     use super::*;
@@ -181,7 +185,7 @@ mod test {
 
         let mut offeror_allocations: OfferorAllocations = OfferorAllocations::new();
         let revealed_offer: Offer = random_revealed_offer();
-        let non_revealed_offer: Offer = random_non_revealed_offer();
+        let non_revealed_offer: Offer = Offer::from_order_submission(&random_offer_submission());
 
         let placed_offers: Offers = Offers::from([
             (

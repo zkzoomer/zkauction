@@ -1,8 +1,10 @@
 use alloy_primitives::{aliases::U96, Address, B256, U256};
 use sp1_sdk::SP1Stdin;
-use zkauction_lib::types::{
-    bids::{BidReveal, BidReveals, BidSubmission, BidSubmissions},
-    offers::{OfferReveal, OfferReveals, OfferSubmission, OfferSubmissions},
+use zkauction_lib::{
+    orders::{
+        bids::{BidReveal, BidReveals, BidSubmission, BidSubmissions},
+        offers::{OfferReveal, OfferReveals, OfferSubmission, OfferSubmissions},
+    },
     tokens::Tokens,
 };
 

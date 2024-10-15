@@ -2733,6 +2733,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
+name = "lean-imt"
+version = "1.0.0"
+dependencies = [
+ "alloy-core",
+ "alloy-primitives 0.8.5",
+ "rand",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.159"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6513,6 +6522,7 @@ dependencies = [
  "alloy-primitives 0.8.5",
  "alloy-sol-types 0.8.5",
  "bincode",
+ "lean-imt",
  "rand",
  "serde",
  "tiny-keccak 2.0.2 (git+https://github.com/sp1-patches/tiny-keccak?branch=patch-v2.0.2)",

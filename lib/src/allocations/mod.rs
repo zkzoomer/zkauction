@@ -1,10 +1,14 @@
-use super::{
-    bidder_allocations::BidderAllocations,
+pub mod bidder_allocations;
+pub mod offeror_allocations;
+
+use alloy_primitives::{Address, U256};
+use bidder_allocations::BidderAllocations;
+use offeror_allocations::OfferorAllocations;
+
+use crate::{
     exit_tree::{ExitLeaf, ExitLeafTokenWithdrawal, ExitLeaves},
-    offeror_allocations::OfferorAllocations,
     tokens::Tokens,
 };
-use alloy_primitives::{Address, U256};
 
 /// Represents the allocation for the prover, which is credited with all the accrued fees
 pub struct ProverAllocation {
@@ -136,17 +140,12 @@ impl AuctionResults {
 
 #[cfg(test)]
 mod test {
+    use crate::exit_tree::{ExitLeafRepoTokenWithdrawal, ExitLeafRepurchaseObligation};
+
     use super::*;
-    use crate::types::{
-        bidder_allocations::BidderAllocation,
-        exit_tree::{
-            ExitLeaf, ExitLeafRepoTokenWithdrawal, ExitLeafRepurchaseObligation,
-            ExitLeafTokenWithdrawal,
-        },
-        offeror_allocations::OfferorAllocation,
-        tokens::Tokens,
-    };
     use alloy_primitives::{Address, U256};
+    use bidder_allocations::BidderAllocation;
+    use offeror_allocations::OfferorAllocation;
 
     #[test]
     fn test_update_purchase_amount_prover() {

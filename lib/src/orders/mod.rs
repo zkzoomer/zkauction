@@ -1,17 +1,10 @@
-pub mod allocations;
-pub mod bidder_allocations;
 pub mod bids;
-pub mod exit_tree;
-pub mod offeror_allocations;
 pub mod offers;
-pub mod tokens;
-pub mod utils;
-use allocations::Allocations;
+
+use crate::{allocations::Allocations, exit_tree::ExitLeafTokenWithdrawal, tokens::Tokens};
 use alloy_primitives::B256;
-use alloy_sol_types::{sol, SolValue};
-use exit_tree::ExitLeafTokenWithdrawal;
+use alloy_sol_types::sol;
 use std::collections::BTreeMap;
-use tokens::Tokens;
 
 sol! {
     /// The public values encoded as a struct that can be easily deserialized inside Solidity.
@@ -48,19 +41,6 @@ pub trait ChainableSubmissions {
     ) -> B256
     where
         F: Fn(&[u8]) -> B256;
-}
-
-/// Trait for Solidity structs that can be hashed via first calling `abi.encodePacked`.
-pub trait HashableStruct: SolValue {
-    /// Computes a single hash value from the struct's fields by first calling `abi.encodePacked`.
-    ///
-    /// # Arguments
-    ///
-    /// * `self` - The struct to hash.
-    /// * `hash_function` - A function that computes a 32-byte hash from a byte slice.
-    fn hash<F: Fn(&[u8]) -> B256>(&self, hash_function: &F) -> B256 {
-        hash_function(&self.abi_encode_packed())
-    }
 }
 
 /// Trait for placed orders mappings.
@@ -156,8 +136,9 @@ pub trait Order {
 /// Type alias for orders mapping.
 pub type Orders<T> = BTreeMap<B256, T>;
 
-pub trait ValidatedOrders {
-    type Order;
+pub trait ValidatedOrders: IntoIterator<Item = Self::Order> + Sized {
+    type Allocation;
+    type Order: Order;
 
     /// Appropriately sorts the orders by revealed price.
     ///
@@ -165,4 +146,19 @@ pub trait ValidatedOrders {
     ///
     /// * `self` - The orders being sorted.
     fn sort_orders(&mut self);
+
+    /// Dumps all outstanding validated orders into their corresponding allocations.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The validated orders.
+    /// * `allocations` - The allocations to add the orders to.
+    fn unlock_outstanding_orders(
+        self,
+        allocations: &mut dyn Allocations<Allocation = Self::Allocation, Order = Self::Order>,
+    ) {
+        for order in self.into_iter() {
+            allocations.add_from_order(&order);
+        }
+    }
 }
