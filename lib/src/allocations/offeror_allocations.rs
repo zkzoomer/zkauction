@@ -80,12 +80,12 @@ impl Allocations for OfferorAllocations {
     type Allocation = OfferorAllocation;
     type Order = Offer;
 
-    fn add_from_order(&mut self, order: &Self::Order) {
+    fn add_from_order(&mut self, order: &Offer) {
         let offeror_allocation: &mut OfferorAllocation = self.get_allocation(&order.offeror);
         offeror_allocation.update_purchase_amount(order.amount);
     }
 
-    fn get_allocation(&mut self, address: &Address) -> &mut Self::Allocation {
+    fn get_allocation(&mut self, address: &Address) -> &mut OfferorAllocation {
         self.entry(*address).or_default()
     }
 }
