@@ -253,6 +253,48 @@ impl Assignable for ValidatedOffers {
     fn assign(self, max_assignable: &U256, clearing_rate: &U256) {}
 }
 
+/// Finds the index of the first bid with a bidPrice of `price` and calculates the cumulative sum of the bid amounts up to that index.
+fn find_first_index_for_price(
+    price: &U256,
+    bids: &ValidatedBids,
+    start_index: &usize,
+) -> (usize, U256) {
+    let mut i: usize = *start_index;
+    let mut total_amount: U256 = bids[i].amount;
+
+    loop {
+        if i == 0 || bids[i - 1].bid_price_revealed != *price {
+            break;
+        }
+
+        total_amount += bids[i - 1].amount;
+        i -= 1;
+    }
+
+    (i, total_amount)
+}
+
+/// Finds the index of the last offer with a offerPrice of `price` and calculates the cumulative sum of the offer amounts up to that index.
+fn find_last_index_for_price(
+    price: &U256,
+    offers: &ValidatedOffers,
+    start_index: &usize,
+) -> (usize, U256) {
+    let mut i: usize = *start_index;
+    let mut total_amount: U256 = offers[i].amount;
+
+    loop {
+        if (i < offers.len() - 1 || offers[i + 1].offer_price_revealed != *price) {
+            break;
+        }
+
+        total_amount += offers[i + 1].amount;
+        i += 1;
+    }
+
+    (i, total_amount)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::orders::{
