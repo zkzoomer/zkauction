@@ -11,11 +11,11 @@ use zkauction_lib::{
     orders::{
         bids::{BidReveals, BidSubmissions},
         offers::{OfferReveals, OfferSubmissions},
-        PublicValuesStruct,
     },
     precompiles::sp1_keccak256,
     run_auction,
     tokens::Tokens,
+    PublicValuesStruct,
 };
 
 /// The main function of the program, reads the auction inputs, computes the auction results commitment,

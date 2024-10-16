@@ -14,7 +14,7 @@ use alloy_primitives::keccak256;
 use alloy_sol_types::SolType;
 use clap::Parser;
 use sp1_sdk::{ProverClient, SP1Stdin};
-use zkauction_lib::orders::PublicValuesStruct;
+use zkauction_lib::PublicValuesStruct;
 
 // Adjust this path based on the actual location of input.rs
 #[path = "../lib/input.rs"]
@@ -42,7 +42,7 @@ fn main() {
     sp1_sdk::utils::setup_logger();
 
     // Parse the command line arguments.
-    let args = Args::parse();
+    let args: Args = Args::parse();
 
     if args.execute == args.prove {
         eprintln!("Error: You must specify either --execute or --prove");
@@ -50,10 +50,10 @@ fn main() {
     }
 
     // Setup the prover client.
-    let client = ProverClient::new();
+    let client: ProverClient = ProverClient::new();
 
     // Setup the inputs.
-    let mut stdin = SP1Stdin::new();
+    let mut stdin: SP1Stdin = SP1Stdin::new();
     let (_prover_address, bid_submissions, offer_submissions, bid_reveals, offer_reveals, tokens) =
         input::set_inputs(&mut stdin);
 
@@ -63,7 +63,8 @@ fn main() {
         println!("Program executed successfully.");
 
         // Read the output.
-        let decoded = PublicValuesStruct::abi_decode(output.as_slice(), true).unwrap();
+        let decoded: PublicValuesStruct =
+            PublicValuesStruct::abi_decode(output.as_slice(), true).unwrap();
         let PublicValuesStruct {
             proverAddress: prover_address,
             accBidsHash: acc_bids_hash,
@@ -104,7 +105,7 @@ fn main() {
         let (pk, vk) = client.setup(ZK_AUCTION_ELF);
 
         // Generate the proof
-        let proof = client
+        let proof: sp1_sdk::SP1ProofWithPublicValues = client
             .prove(&pk, stdin)
             .run()
             .expect("failed to generate proof");

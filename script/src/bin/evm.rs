@@ -15,7 +15,7 @@ use clap::{Parser, ValueEnum};
 use serde::{Deserialize, Serialize};
 use sp1_sdk::{HashableKey, ProverClient, SP1ProofWithPublicValues, SP1Stdin, SP1VerifyingKey};
 use std::path::PathBuf;
-use zkauction_lib::orders::PublicValuesStruct;
+use zkauction_lib::PublicValuesStruct;
 
 // Adjust this path based on the actual location of input.rs
 #[path = "../lib/input.rs"]
@@ -69,7 +69,7 @@ fn main() {
     let args = EVMArgs::parse(); */
 
     // Setup the inputs.
-    let mut stdin = SP1Stdin::new();
+    let mut stdin: SP1Stdin = SP1Stdin::new();
     let (
         _prover_address,
         _bids_submissions,
@@ -79,10 +79,10 @@ fn main() {
         _tokens_prices,
     ) = input::set_inputs(&mut stdin);
 
-    let proof_system = ProofSystem::Plonk;
+    let proof_system: ProofSystem = ProofSystem::Plonk;
 
     // Setup the prover client.
-    let client = ProverClient::new();
+    let client: ProverClient = ProverClient::new();
 
     // Setup the program.
     let (pk, vk) = client.setup(ZK_AUCTION_ELF);
@@ -91,7 +91,7 @@ fn main() {
     // Generate the proof based on the selected proof system.
     println!("Generating proof...");
     let start_time = std::time::Instant::now();
-    let proof = match proof_system {
+    let proof: SP1ProofWithPublicValues = match proof_system {
         ProofSystem::Plonk => client.prove(&pk, stdin).plonk().run(),
         ProofSystem::Groth16 => client.prove(&pk, stdin).groth16().run(),
     }
@@ -108,7 +108,7 @@ fn create_proof_fixture(
     system: ProofSystem,
 ) {
     // Deserialize the public values.
-    let bytes = proof.public_values.as_slice();
+    let bytes: &[u8] = proof.public_values.as_slice();
 
     let PublicValuesStruct {
         proverAddress,
@@ -119,7 +119,7 @@ fn create_proof_fixture(
     } = PublicValuesStruct::abi_decode(bytes, false).unwrap();
 
     // Create the testing fixture so we can test things end-to-end.
-    let fixture = SP1zkAuctionProofFixture {
+    let fixture: SP1zkAuctionProofFixture = SP1zkAuctionProofFixture {
         prover_address: proverAddress.to_string(),
         acc_bids_hash: accBidsHash.to_string(),
         acc_offers_hash: accOffersHash.to_string(),

@@ -3,24 +3,7 @@ pub mod offers;
 
 use crate::{allocations::Allocations, exit_tree::ExitLeafTokenWithdrawal, tokens::Tokens};
 use alloy_primitives::B256;
-use alloy_sol_types::sol;
 use std::collections::BTreeMap;
-
-sol! {
-    /// The public values encoded as a struct that can be easily deserialized inside Solidity.
-    struct PublicValuesStruct {
-        /// Address of the prover
-        address proverAddress;
-        /// Reconstructed hash chain of all bids placed and revealed onchain
-        bytes32 accBidsHash;
-        /// Reconstructed hash chain of all offers placed and revealed onchain
-        bytes32 accOffersHash;
-        /// Hashed together information on the tokens involved
-        bytes32 tokenPricesHash;
-        /// The root of the auction results tree
-        bytes32 auctionResultRoot;
-    }
-}
 
 /// Trait for types that represent onchain chainable orders.
 pub trait ChainableSubmissions {
