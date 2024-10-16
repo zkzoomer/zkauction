@@ -12,7 +12,7 @@ struct PublicValuesStruct {
     /// Reconstructed hash chain of all offers placed and revealed onchain
     bytes32 accOffersHash;
     /// Hashed together information on the tokens involved
-    bytes32 tokenPricesHash;
+    bytes32 auctionParametersHash;
     /// The root of the auction results tree
     bytes32 auctionResultRoot;
 }

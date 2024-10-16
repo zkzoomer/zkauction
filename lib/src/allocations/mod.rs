@@ -6,8 +6,8 @@ use bidder_allocations::BidderAllocations;
 use offeror_allocations::OfferorAllocations;
 
 use crate::{
+    auction_parameters::AuctionParameters,
     exit_tree::{ExitLeaf, ExitLeafTokenWithdrawal, ExitLeaves},
-    tokens::Tokens,
 };
 
 /// Represents the allocation for the prover, which is credited with all the accrued fees
@@ -46,9 +46,9 @@ impl ProverAllocation {
     /// # Arguments
     ///
     /// * `self` - The prover allocation to convert.
-    /// * `tokens` - A reference to the `Tokens` struct containing token information.
+    /// * `tokens` - A reference to the `AuctionParameters` struct containing token information.
     /// * `exit_leaves` - A mutable reference to the vector of exit leaves to update.
-    fn into_exit_leaves(self, tokens: &Tokens, exit_leaves: &mut ExitLeaves) {
+    fn into_exit_leaves(self, tokens: &AuctionParameters, exit_leaves: &mut ExitLeaves) {
         if self.purchase_amount != U256::ZERO {
             exit_leaves.push(ExitLeaf::TokenWithdrawal(ExitLeafTokenWithdrawal {
                 recipient: self.prover_address,
@@ -67,9 +67,14 @@ pub trait Allocation {
     ///
     /// * `self` - The allocation to convert.
     /// * `address` - The address associated with this allocation.
-    /// * `tokens` - A reference to the `Tokens` struct containing token information.
+    /// * `tokens` - A reference to the `AuctionParameters` struct containing token information.
     /// * `exit_leaves` - A mutable reference to the vector of exit leaves to update.
-    fn into_exit_leaves(self, address: Address, tokens: &Tokens, exit_leaves: &mut ExitLeaves);
+    fn into_exit_leaves(
+        self,
+        address: Address,
+        tokens: &AuctionParameters,
+        exit_leaves: &mut ExitLeaves,
+    );
 }
 
 /// Trait for fetching allocations and defining them from invalid orders
@@ -123,9 +128,9 @@ impl AuctionResults {
     /// # Arguments
     ///
     /// * `self` - The allocations instance
-    /// * `tokens` - A reference to the `Tokens` struct containing token information.
+    /// * `tokens` - A reference to the `AuctionParameters` struct containing token information.
     /// * `exit_leaves` - A mutable reference to the vector of exit leaves to update.
-    pub fn into_exit_leaves(self, tokens: &Tokens, exit_leaves: &mut ExitLeaves) {
+    pub fn into_exit_leaves(self, tokens: &AuctionParameters, exit_leaves: &mut ExitLeaves) {
         self.prover_allocation.into_exit_leaves(tokens, exit_leaves);
 
         for (address, bidder_allocation) in self.bidder_allocations.into_iter() {
@@ -140,7 +145,10 @@ impl AuctionResults {
 
 #[cfg(test)]
 mod test {
-    use crate::exit_tree::{ExitLeafRepoTokenWithdrawal, ExitLeafRepurchaseObligation};
+    use crate::{
+        auction_parameters::tests::random_auction_parameters,
+        exit_tree::{ExitLeafRepoTokenWithdrawal, ExitLeafRepurchaseObligation},
+    };
 
     use super::*;
     use alloy_primitives::{Address, U256};
@@ -160,7 +168,7 @@ mod test {
     #[test]
     fn test_prover_into_exit_leaves() {
         let mut exit_leaves: ExitLeaves = ExitLeaves::new();
-        let tokens: Tokens = random_tokens();
+        let tokens: AuctionParameters = random_auction_parameters();
 
         // Empty prover allocation pushes no new leaf
         let prover_allocation: ProverAllocation = ProverAllocation::new(&Address::random());
@@ -186,7 +194,7 @@ mod test {
 
     #[test]
     fn test_into_exit_leaves() {
-        let tokens: Tokens = random_tokens();
+        let tokens: AuctionParameters = random_auction_parameters();
         let mut exit_leaves: ExitLeaves = ExitLeaves::new();
         let mut auction_results: AuctionResults = AuctionResults::new(&Address::random());
 
@@ -257,16 +265,5 @@ mod test {
                 collateralAmount: bidder_repurchase_collateral,
             }
         )));
-    }
-
-    // TEST HELPER FUNCTIONS
-    /// Creates a new set of random tokens.
-    fn random_tokens() -> Tokens {
-        Tokens {
-            purchaseToken: Address::random(),
-            purchasePrice: U256::from(rand::random::<u64>()),
-            collateralToken: Address::random(),
-            collateralPrice: U256::from(rand::random::<u64>()),
-        }
     }
 }

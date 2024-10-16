@@ -1,9 +1,9 @@
 use super::{ChainableSubmissions, Order, PlacedOrders, ValidatedOrders};
 use crate::{
     allocations::offeror_allocations::OfferorAllocation,
+    auction_parameters::AuctionParameters,
     constants::MAX_OFFER_PRICE,
     exit_tree::ExitLeafTokenWithdrawal,
-    tokens::Tokens,
     utils::{add_to_hash_chain, get_key, get_price_hash},
 };
 use alloy_primitives::{aliases::U96, Address, B256, U256};
@@ -62,11 +62,11 @@ impl Order for Offer {
         }
     }
 
-    fn is_valid(&self, _tokens: &Tokens) -> bool {
+    fn is_valid(&self, _tokens: &AuctionParameters) -> bool {
         self.is_revealed
     }
 
-    fn to_exit_leaf(&self, tokens: &Tokens) -> ExitLeafTokenWithdrawal {
+    fn to_exit_leaf(&self, tokens: &AuctionParameters) -> ExitLeafTokenWithdrawal {
         ExitLeafTokenWithdrawal {
             token: tokens.purchaseToken,
             recipient: self.offeror,
@@ -205,7 +205,10 @@ impl ValidatedOrders for ValidatedOffers {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::{allocations::AuctionResults, utils::test::calculate_expected_hash_chain_output};
+    use crate::{
+        allocations::AuctionResults, auction_parameters::tests::random_auction_parameters,
+        utils::test::calculate_expected_hash_chain_output,
+    };
 
     use super::*;
     use alloy_primitives::keccak256;
@@ -285,16 +288,16 @@ pub mod tests {
     fn test_offer_is_valid() {
         let mut offer: Offer = random_revealed_offer();
         offer.is_revealed = true;
-        assert!(offer.is_valid(&random_tokens()));
+        assert!(offer.is_valid(&random_auction_parameters()));
 
         offer.is_revealed = false;
-        assert!(!offer.is_valid(&random_tokens()));
+        assert!(!offer.is_valid(&random_auction_parameters()));
     }
 
     #[test]
     fn test_offer_to_exit_leaf() {
         let offer: Offer = random_revealed_offer();
-        let tokens: Tokens = random_tokens();
+        let tokens: AuctionParameters = random_auction_parameters();
         let exit_leaf: ExitLeafTokenWithdrawal = offer.to_exit_leaf(&tokens);
 
         assert_eq!(exit_leaf.recipient, offer.offeror);
@@ -483,15 +486,5 @@ pub mod tests {
         );
         assert_eq!(offer_expected.amount, offer.amount);
         assert_eq!(offer_expected.is_revealed, offer.is_revealed);
-    }
-
-    /// Creates a new set of random tokens.
-    fn random_tokens() -> Tokens {
-        Tokens {
-            purchaseToken: Address::random(),
-            purchasePrice: U256::from(rand::random::<u64>()),
-            collateralToken: Address::random(),
-            collateralPrice: U256::from(rand::random::<u64>()),
-        }
     }
 }

@@ -1,9 +1,9 @@
 use super::{ChainableSubmissions, Order, PlacedOrders, ValidatedOrders};
 use crate::{
     allocations::bidder_allocations::BidderAllocation,
+    auction_parameters::AuctionParameters,
     constants::{BPS, INITIAL_COLLATERAL_RATIO, MAX_BID_PRICE},
     exit_tree::ExitLeafTokenWithdrawal,
-    tokens::Tokens,
     utils::{add_to_hash_chain, get_key, get_price_hash},
 };
 use alloy_primitives::{aliases::U96, Address, B256, U256};
@@ -72,7 +72,7 @@ impl Order for Bid {
         }
     }
 
-    fn is_valid(&self, tokens: &Tokens) -> bool {
+    fn is_valid(&self, tokens: &AuctionParameters) -> bool {
         // Calculate the value of collateral and purchase amount
         // If one operation overflows, the bid is invalid
         let (collateral_value, of1) = self
@@ -88,7 +88,7 @@ impl Order for Bid {
             && (!of1 && !of2 && !of3 && !of4)
     }
 
-    fn to_exit_leaf(&self, tokens: &Tokens) -> ExitLeafTokenWithdrawal {
+    fn to_exit_leaf(&self, tokens: &AuctionParameters) -> ExitLeafTokenWithdrawal {
         ExitLeafTokenWithdrawal {
             recipient: self.bidder,
             token: tokens.collateralToken,
@@ -226,7 +226,10 @@ impl ChainableSubmissions for BidReveals {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::{allocations::AuctionResults, utils::test::calculate_expected_hash_chain_output};
+    use crate::{
+        allocations::AuctionResults, auction_parameters::tests::random_auction_parameters,
+        utils::test::calculate_expected_hash_chain_output,
+    };
 
     use super::*;
     use alloy_primitives::keccak256;
@@ -306,7 +309,7 @@ pub mod tests {
 
     #[test]
     fn test_bid_is_valid() {
-        let tokens: Tokens = random_tokens();
+        let tokens: AuctionParameters = random_auction_parameters();
 
         let revealed_bid: Bid =
             random_collateralized_revealed_bid(&tokens.purchasePrice, &tokens.collateralPrice);
@@ -324,7 +327,7 @@ pub mod tests {
     #[test]
     fn test_bid_to_exit_leaf() {
         let bid: Bid = random_revealed_bid();
-        let tokens: Tokens = random_tokens();
+        let tokens: AuctionParameters = random_auction_parameters();
         let exit_leaf: ExitLeafTokenWithdrawal = bid.to_exit_leaf(&tokens);
 
         assert_eq!(exit_leaf.recipient, bid.bidder);
@@ -576,15 +579,5 @@ pub mod tests {
             bid.rollover_pair_off_term_repo_servicer
         );
         assert_eq!(bid_expected.is_revealed, bid.is_revealed);
-    }
-
-    /// Creates a new set of random tokens.
-    fn random_tokens() -> Tokens {
-        Tokens {
-            purchaseToken: Address::random(),
-            purchasePrice: U256::from(rand::random::<u64>()),
-            collateralToken: Address::random(),
-            collateralPrice: U256::from(rand::random::<u64>()),
-        }
     }
 }

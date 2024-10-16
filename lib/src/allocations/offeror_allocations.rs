@@ -2,9 +2,9 @@ use alloy_primitives::{Address, U256};
 use std::collections::BTreeMap;
 
 use crate::{
+    auction_parameters::AuctionParameters,
     exit_tree::{ExitLeaf, ExitLeafRepoTokenWithdrawal, ExitLeafTokenWithdrawal, ExitLeaves},
     orders::offers::Offer,
-    tokens::Tokens,
 };
 
 use super::{Allocation, Allocations};
@@ -50,7 +50,12 @@ impl OfferorAllocation {
 }
 
 impl Allocation for OfferorAllocation {
-    fn into_exit_leaves(self, address: Address, tokens: &Tokens, exit_leaves: &mut ExitLeaves) {
+    fn into_exit_leaves(
+        self,
+        address: Address,
+        tokens: &AuctionParameters,
+        exit_leaves: &mut ExitLeaves,
+    ) {
         if self.repo_amount != U256::ZERO {
             exit_leaves.push(ExitLeaf::RepoTokenWithdrawal(ExitLeafRepoTokenWithdrawal {
                 recipient: address,
@@ -90,6 +95,7 @@ mod test {
 
     use crate::{
         allocations::AuctionResults,
+        auction_parameters::tests::random_auction_parameters,
         orders::{
             offers::{
                 tests::{random_offer_submission, random_revealed_offer},
@@ -181,7 +187,7 @@ mod test {
 
     #[test]
     fn test_validate_offers() {
-        let tokens: Tokens = random_tokens();
+        let tokens: AuctionParameters = random_auction_parameters();
 
         let mut offeror_allocations: OfferorAllocations = OfferorAllocations::new();
         let revealed_offer: Offer = random_revealed_offer();
@@ -224,7 +230,7 @@ mod test {
 
     #[test]
     fn test_offeror_into_exit_leaves() {
-        let tokens: Tokens = random_tokens();
+        let tokens: AuctionParameters = random_auction_parameters();
 
         // Empty offeror allocation pushes no new leaf
         let mut exit_leaves: ExitLeaves = ExitLeaves::new();
@@ -265,16 +271,5 @@ mod test {
                 amount: offeror_purchase_amount,
             }),
         );
-    }
-
-    // TEST HELPER FUNCTIONS
-    /// Creates a new set of random tokens.
-    fn random_tokens() -> Tokens {
-        Tokens {
-            purchaseToken: Address::random(),
-            purchasePrice: U256::from(rand::random::<u64>()),
-            collateralToken: Address::random(),
-            collateralPrice: U256::from(rand::random::<u64>()),
-        }
     }
 }

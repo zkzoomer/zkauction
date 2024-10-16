@@ -1,3 +1,6 @@
+pub mod assign_bids;
+pub mod assign_offers;
+
 use alloy_primitives::U256;
 
 use crate::orders::{bids::ValidatedBids, offers::ValidatedOffers};
@@ -235,26 +238,26 @@ fn decrease_cum_sum_bids(
 
 /// Trait for assigning bids and offers to auction results.
 pub trait Assignable {
+    type Allocations;
+
     /// Assigns bids or offers up to a maximum assignable amount at a clearing rate.
     ///
     /// # Arguments
     ///
     /// * `self` - The bids or offers to assign.
     /// * `max_assignable` - The maximum amount that can be assigned.
-    /// * `clearing_rate` - The clearing rate at which to assign the orders.
-    fn assign(self, max_assignable: &U256, clearing_rate: &U256);
-}
-
-impl Assignable for ValidatedBids {
-    fn assign(self, max_assignable: &U256, clearing_rate: &U256) {}
-}
-
-impl Assignable for ValidatedOffers {
-    fn assign(self, max_assignable: &U256, clearing_rate: &U256) {}
+    /// * `clearing_price` - The clearing rate at which to assign the orders.
+    fn assign(
+        self,
+        max_assignable: &U256,
+        clearing_price: &U256,
+        day_count: &U256,
+        allocations: &mut Self::Allocations,
+    );
 }
 
 /// Finds the index of the first bid with a bidPrice of `price` and calculates the cumulative sum of the bid amounts up to that index.
-fn find_first_index_for_price(
+pub fn find_first_index_for_price(
     price: &U256,
     bids: &ValidatedBids,
     start_index: &usize,
@@ -275,7 +278,7 @@ fn find_first_index_for_price(
 }
 
 /// Finds the index of the last offer with a offerPrice of `price` and calculates the cumulative sum of the offer amounts up to that index.
-fn find_last_index_for_price(
+pub fn find_last_index_for_price(
     price: &U256,
     offers: &ValidatedOffers,
     start_index: &usize,
@@ -303,20 +306,11 @@ mod tests {
     };
 
     use super::*;
-    use alloy_primitives::{Address, U256};
+    use alloy_primitives::U256;
 
     #[test]
     fn test_compute_clearing_price() {
-        unimplemented!()
-    }
-
-    #[test]
-    fn test_assign_validated_bids() {
-        unimplemented!()
-    }
-
-    #[test]
-    fn test_assign_validated_offers() {
+        // We're just gonna assume Term Finance is correct and move on and our bug infested code
         unimplemented!()
     }
 

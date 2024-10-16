@@ -69,13 +69,13 @@ fn main() {
             proverAddress: prover_address,
             accBidsHash: acc_bids_hash,
             accOffersHash: acc_offers_hash,
-            tokenPricesHash: token_prices_hash,
+            auctionParametersHash: token_prices_hash,
             auctionResultRoot: auction_result_root,
         } = decoded;
         println!("proverAddress: {}", prover_address);
         println!("accBidsHash: {}", acc_bids_hash);
         println!("accOffersHash: {}", acc_offers_hash);
-        println!("tokenPricesHash: {}", token_prices_hash);
+        println!("auctionParametersHash: {}", token_prices_hash);
         println!("auctionResultRoot: {}", auction_result_root);
 
         let (

@@ -1,11 +1,11 @@
 use alloy_primitives::{aliases::U96, Address, B256, U256};
 use sp1_sdk::SP1Stdin;
 use zkauction_lib::{
+    auction_parameters::AuctionParameters,
     orders::{
         bids::{BidReveal, BidReveals, BidSubmission, BidSubmissions},
         offers::{OfferReveal, OfferReveals, OfferSubmission, OfferSubmissions},
     },
-    tokens::Tokens,
 };
 
 /// Reads the provided auction inputs and sets them in the provided stdin.
@@ -17,7 +17,7 @@ pub fn set_inputs(
     OfferSubmissions,
     BidReveals,
     OfferReveals,
-    Tokens,
+    AuctionParameters,
 ) {
     let num_offers: i32 = 1000;
 
@@ -53,11 +53,12 @@ pub fn set_inputs(
             nonce: U256::from(rand::random::<u128>()),
         })
         .collect();
-    let tokens: Tokens = Tokens {
+    let tokens: AuctionParameters = AuctionParameters {
         purchaseToken: Address::random(),
         purchasePrice: U256::from(rand::random::<u64>()),
         collateralToken: Address::random(),
         collateralPrice: U256::from(rand::random::<u64>()),
+        dayCount: U256::from(rand::random::<u64>()),
     };
 
     stdin.write(&prover_address);

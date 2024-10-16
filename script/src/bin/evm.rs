@@ -114,7 +114,7 @@ fn create_proof_fixture(
         proverAddress,
         accBidsHash,
         accOffersHash,
-        tokenPricesHash,
+        auctionParametersHash,
         auctionResultRoot,
     } = PublicValuesStruct::abi_decode(bytes, false).unwrap();
 
@@ -123,7 +123,7 @@ fn create_proof_fixture(
         prover_address: proverAddress.to_string(),
         acc_bids_hash: accBidsHash.to_string(),
         acc_offers_hash: accOffersHash.to_string(),
-        token_prices_hash: tokenPricesHash.to_string(),
+        token_prices_hash: auctionParametersHash.to_string(),
         auction_result_root: auctionResultRoot.to_string(),
         vkey: vk.bytes32().to_string(),
         public_values: format!("0x{}", hex::encode(bytes)),

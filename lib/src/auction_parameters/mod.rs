@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 sol! {
     /// A `TokenPrice` represents a given ERC-20 token address and its oracle price at proof verification time
     #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
-    struct Tokens {
+    struct AuctionParameters {
         /// The purchase token address
         address purchaseToken;
         /// The oracle price of the purchase token at proof verification time
@@ -14,6 +14,8 @@ sol! {
         address collateralToken;
         /// The oracle price of the collateral token at proof verification time
         uint256 collateralPrice;
+        // Number of days between auction and maturity dates, used to compute servicing fees and repurchase prices
+        uint256 dayCount;
     }
 }
 
@@ -30,17 +32,17 @@ pub trait HashableStruct: SolValue {
     }
 }
 
-impl HashableStruct for Tokens {}
+impl HashableStruct for AuctionParameters {}
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use alloy_primitives::{keccak256, Address, B256, U256};
     use alloy_sol_types::SolValue;
 
     #[test]
     fn test_hash() {
-        let tokens: Tokens = random_tokens();
+        let tokens: AuctionParameters = random_auction_parameters();
 
         // Recreates the onchain process
         let mut encoded_tokens: Vec<u8> = Vec::new();
@@ -61,12 +63,13 @@ mod tests {
 
     // TEST HELPER FUNCTIONS
     /// Creates a new set of random tokens.
-    fn random_tokens() -> Tokens {
-        Tokens {
+    pub fn random_auction_parameters() -> AuctionParameters {
+        AuctionParameters {
             purchaseToken: Address::random(),
             purchasePrice: U256::from(rand::random::<u64>()),
             collateralToken: Address::random(),
             collateralPrice: U256::from(rand::random::<u64>()),
+            dayCount: U256::from(rand::random::<u64>()),
         }
     }
 }

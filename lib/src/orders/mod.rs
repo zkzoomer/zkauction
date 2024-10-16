@@ -1,7 +1,9 @@
 pub mod bids;
 pub mod offers;
 
-use crate::{allocations::Allocations, exit_tree::ExitLeafTokenWithdrawal, tokens::Tokens};
+use crate::{
+    allocations::Allocations, auction_parameters::AuctionParameters, exit_tree::ExitLeafTokenWithdrawal,
+};
 use alloy_primitives::B256;
 use std::collections::BTreeMap;
 
@@ -49,7 +51,7 @@ pub trait PlacedOrders: IntoIterator<Item = (B256, Self::Order)> + Sized {
     /// * `allocations` - The allocations to add invalid orders to.
     fn into_validated_orders(
         self,
-        tokens: &Tokens,
+        tokens: &AuctionParameters,
         allocations: &mut dyn Allocations<Allocation = Self::Allocation, Order = Self::Order>,
     ) -> Vec<Self::Order> {
         let mut valid_orders = Vec::new();
@@ -105,7 +107,7 @@ pub trait Order {
     ///
     /// * `self` - The order being checked.
     /// * `tokens` - The tokens to check against.
-    fn is_valid(&self, tokens: &Tokens) -> bool;
+    fn is_valid(&self, tokens: &AuctionParameters) -> bool;
 
     /// Converts the order to an exit leaf.
     ///
@@ -113,7 +115,7 @@ pub trait Order {
     ///
     /// * `self` - The order being converted.
     /// * `tokens` - The tokens being used in the auction.
-    fn to_exit_leaf(&self, tokens: &Tokens) -> ExitLeafTokenWithdrawal;
+    fn to_exit_leaf(&self, tokens: &AuctionParameters) -> ExitLeafTokenWithdrawal;
 }
 
 /// Type alias for orders mapping.

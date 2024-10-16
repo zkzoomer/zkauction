@@ -8,14 +8,13 @@ sp1_zkvm::entrypoint!(main);
 use alloy_primitives::Address;
 use alloy_sol_types::SolValue;
 use zkauction_lib::{
+    auction_parameters::AuctionParameters,
     orders::{
         bids::{BidReveals, BidSubmissions},
         offers::{OfferReveals, OfferSubmissions},
     },
     precompiles::sp1_keccak256,
-    run_auction,
-    tokens::Tokens,
-    PublicValuesStruct,
+    run_auction, PublicValuesStruct,
 };
 
 /// The main function of the program, reads the auction inputs, computes the auction results commitment,
@@ -32,7 +31,7 @@ pub fn main() {
     let bid_reveals: BidReveals = sp1_zkvm::io::read::<BidReveals>();
     let offer_reveals: OfferReveals = sp1_zkvm::io::read::<OfferReveals>();
     // Read token information at the time of proof verification
-    let tokens: Tokens = sp1_zkvm::io::read::<Tokens>();
+    let tokens: AuctionParameters = sp1_zkvm::io::read::<AuctionParameters>();
 
     // Compute public values encoding the auction and its results
     let (acc_bids_hash, acc_offers_hash, token_prices_hash, auction_result_root) = run_auction(
@@ -50,7 +49,7 @@ pub fn main() {
         proverAddress: prover_address,
         accBidsHash: acc_bids_hash,
         accOffersHash: acc_offers_hash,
-        tokenPricesHash: token_prices_hash,
+        auctionParametersHash: token_prices_hash,
         auctionResultRoot: auction_result_root,
     });
 
