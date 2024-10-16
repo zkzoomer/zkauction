@@ -239,7 +239,7 @@ pub mod tests {
     #[test]
     fn test_offer_update_from_order_reveal() {
         // Valid reveal
-        let price: U256 = U256::from(rand::random::<u64>() % crate::constants::MAX_OFFER_PRICE);
+        let price: U256 = U256::from(rand::random::<u32>() % MAX_OFFER_PRICE);
         let nonce: U256 = U256::from(rand::random::<u128>());
         let offer_submission: OfferSubmission = valid_random_offer_submission(&price, &nonce);
         let mut offer: Offer = Offer::from_order_submission(&offer_submission);
@@ -268,7 +268,7 @@ pub mod tests {
         assert!(!offer.is_revealed);
 
         // Invalid reveal with out of bounds price
-        let price: U256 = U256::from(crate::constants::MAX_OFFER_PRICE + 1);
+        let price: U256 = U256::from(MAX_OFFER_PRICE + 1);
         let nonce: U256 = U256::from(rand::random::<u128>());
         let offer_submission: OfferSubmission = valid_random_offer_submission(&price, &nonce);
         let mut offer = Offer::from_order_submission(&offer_submission);
@@ -373,8 +373,7 @@ pub mod tests {
         let mut offer_reveals: OfferReveals = OfferReveals::new();
         let offer_submissions: OfferSubmissions = (0..42)
             .map(|_| {
-                let price: U256 =
-                    U256::from(rand::random::<u64>() % crate::constants::MAX_OFFER_PRICE);
+                let price: U256 = U256::from(rand::random::<u32>() % MAX_OFFER_PRICE);
                 let nonce: U256 = U256::from(rand::random::<u128>());
                 let offer_submission: OfferSubmission =
                     valid_random_offer_submission(&price, &nonce);
@@ -455,9 +454,7 @@ pub mod tests {
             id: U96::from(rand::random::<u64>()),
             offeror: Address::random(),
             offer_price_hash: B256::random(),
-            offer_price_revealed: U256::from(
-                rand::random::<u64>() % crate::constants::MAX_OFFER_PRICE,
-            ),
+            offer_price_revealed: U256::from(rand::random::<u32>() % MAX_OFFER_PRICE),
             amount: U256::from(rand::random::<u128>()),
             is_revealed: true,
         }

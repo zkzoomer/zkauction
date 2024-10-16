@@ -262,7 +262,7 @@ pub mod tests {
     #[test]
     fn test_bid_update_from_order_reveal() {
         // Valid reveal
-        let price: U256 = U256::from(rand::random::<u64>() % crate::constants::MAX_BID_PRICE);
+        let price: U256 = U256::from(rand::random::<u32>() % MAX_BID_PRICE);
         let nonce: U256 = U256::from(rand::random::<u128>());
         let bid_submission: BidSubmission = valid_random_bid_submission(&price, &nonce);
         let mut bid: Bid = Bid::from_order_submission(&bid_submission);
@@ -291,7 +291,7 @@ pub mod tests {
         assert!(!bid.is_revealed);
 
         // Valid reveal with out of bounds price
-        let price: U256 = U256::from(crate::constants::MAX_BID_PRICE + 1);
+        let price: U256 = U256::from(MAX_BID_PRICE + 1);
         let nonce: U256 = U256::from(rand::random::<u128>());
         let bid_submission: BidSubmission = valid_random_bid_submission(&price, &nonce);
         let mut bid: Bid = Bid::from_order_submission(&bid_submission);
@@ -402,8 +402,7 @@ pub mod tests {
         let mut bid_reveals: BidReveals = BidReveals::new();
         let bid_submissions: BidSubmissions = (0..42)
             .map(|_| {
-                let price: U256 =
-                    U256::from(rand::random::<u64>() % crate::constants::MAX_BID_PRICE);
+                let price: U256 = U256::from(rand::random::<u32>() % MAX_BID_PRICE);
                 let nonce: U256 = U256::from(rand::random::<u128>());
                 let bid_submission: BidSubmission = valid_random_bid_submission(&price, &nonce);
                 expected_bids.save_or_update_order(&bid_submission);
@@ -492,7 +491,7 @@ pub mod tests {
             id: U96::from(rand::random::<u64>()),
             bidder: Address::random(),
             bid_price_hash: B256::random(),
-            bid_price_revealed: U256::from(rand::random::<u64>() % MAX_BID_PRICE),
+            bid_price_revealed: U256::from(rand::random::<u32>() % MAX_BID_PRICE),
             amount: purchase_amount,
             collateral_amount: minimum_collateral_amount
                 .saturating_add(U256::from(rand::random::<u128>())),
@@ -516,7 +515,7 @@ pub mod tests {
             id: U96::from(rand::random::<u64>()),
             bidder: Address::random(),
             bid_price_hash: B256::random(),
-            bid_price_revealed: U256::from(rand::random::<u64>() % MAX_BID_PRICE),
+            bid_price_revealed: U256::from(rand::random::<u32>() % MAX_BID_PRICE),
             amount: purchase_amount,
             collateral_amount: underwater_collateral_amount,
             is_rollover: false,
@@ -540,7 +539,7 @@ pub mod tests {
             id: U96::from(rand::random::<u64>()),
             bidder: Address::random(),
             bid_price_hash: B256::random(),
-            bid_price_revealed: U256::from(rand::random::<u64>() % MAX_BID_PRICE),
+            bid_price_revealed: U256::from(rand::random::<u32>() % MAX_BID_PRICE),
             amount,
             collateral_amount: minimum_collateral_amount
                 .saturating_add(U256::from(rand::random::<u128>())),
@@ -556,7 +555,7 @@ pub mod tests {
             id: U96::from(rand::random::<u64>()),
             bidder: Address::random(),
             bid_price_hash: B256::random(),
-            bid_price_revealed: U256::from(rand::random::<u64>() % crate::constants::MAX_BID_PRICE),
+            bid_price_revealed: U256::from(rand::random::<u32>() % MAX_BID_PRICE),
             amount: U256::from(rand::random::<u128>()),
             collateral_amount: U256::from(rand::random::<u128>()),
             is_rollover: false,

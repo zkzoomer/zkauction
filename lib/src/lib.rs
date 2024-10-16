@@ -10,7 +10,7 @@ pub mod utils;
 use allocations::AuctionResults;
 use alloy_primitives::{Address, B256};
 use alloy_sol_types::sol;
-use auction::{compute_clearing_price, Assignable};
+use auction::{compute_clearing_price, AssignableOrders};
 use auction_parameters::{AuctionParameters, HashableStruct};
 use exit_tree::{ExitLeaves, ExitTree};
 use orders::{

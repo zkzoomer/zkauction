@@ -3,7 +3,10 @@ pub mod assign_offers;
 
 use alloy_primitives::U256;
 
-use crate::orders::{bids::ValidatedBids, offers::ValidatedOffers};
+use crate::{
+    constants::{BPS, DAYS_IN_YEAR},
+    orders::{bids::ValidatedBids, offers::ValidatedOffers},
+};
 
 /// Computes the clearing rate as the average of the second most competitive bid and the second most competitive offer.
 ///
@@ -236,8 +239,61 @@ fn decrease_cum_sum_bids(
     (cum_sum_bids, i)
 }
 
+/// Trait for assigning orders individually, either fully, partially or not at all.
+pub trait AssignableOrder {
+    type Allocations;
+
+    /// Fully assigns an order.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The order to fully assign.
+    /// * `clearing_price` - The clearing rate at which to assign the order.
+    /// * `day_count` - The day count.
+    /// * `allocations` - The allocations.
+    ///
+    /// # Returns
+    ///
+    /// * `U256` - The amount that was assigned.
+    fn fully_assign(
+        &self,
+        clearing_price: &U256,
+        day_count: &U256,
+        allocations: &mut Self::Allocations,
+    ) -> U256;
+
+    /// Partially assigns an order.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The order to partially assign.
+    /// * `clearing_price` - The clearing rate at which to assign the order.
+    /// * `day_count` - The day count.
+    /// * `assigned_amount` - The amount to partially assign.
+    /// * `allocations` - The allocations.
+    ///
+    /// # Returns
+    ///
+    /// * `U256` - The amount that was assigned.
+    fn partially_assign(
+        &self,
+        clearing_price: &U256,
+        day_count: &U256,
+        assigned_amount: &U256,
+        allocations: &mut Self::Allocations,
+    ) -> U256;
+
+    /// Unlocks an order, meaning it was not assigned..
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The order to unlock.
+    /// * `allocations` - The allocations.
+    fn unlock(&self, allocations: &mut Self::Allocations);
+}
+
 /// Trait for assigning bids and offers to auction results.
-pub trait Assignable {
+pub trait AssignableOrders {
     type Allocations;
 
     /// Assigns bids or offers up to a maximum assignable amount at a clearing rate.
@@ -287,7 +343,7 @@ pub fn find_last_index_for_price(
     let mut total_amount: U256 = offers[i].amount;
 
     loop {
-        if (i < offers.len() - 1 || offers[i + 1].offer_price_revealed != *price) {
+        if i < offers.len() - 1 || offers[i + 1].offer_price_revealed != *price {
             break;
         }
 
@@ -298,34 +354,22 @@ pub fn find_last_index_for_price(
     (i, total_amount)
 }
 
+/// Computes the repurchase price using the 360 day count convention.
+pub fn calculate_repurchase_price(
+    purchase_price: &U256,
+    clearing_price: &U256,
+    day_count: &U256,
+) -> U256 {
+    // RepurchasePrice = PurchasePrice * (1 + RepoRate * DayCountFactor)
+    let aux: f64 = f64::from(day_count * clearing_price) / f64::from(DAYS_IN_YEAR * BPS);
+    U256::from(f64::from(purchase_price) * (1.0 + aux))
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::orders::{
-        bids::{tests::random_revealed_bid, Bid},
-        offers::{tests::random_revealed_offer, Offer},
-    };
-
-    use super::*;
-    use alloy_primitives::U256;
-
     #[test]
     fn test_compute_clearing_price() {
         // We're just gonna assume Term Finance is correct and move on and our bug infested code
         unimplemented!()
-    }
-
-    // TEST HELPER FUNCTIONS
-    /// Defines a random bid with the given bid price
-    fn random_bid_from_price(bid_price: U256) -> Bid {
-        let mut bid: Bid = random_revealed_bid();
-        bid.bid_price_revealed = bid_price;
-        bid
-    }
-
-    /// Defines a random offer with the given offer price
-    fn random_offer_from_price(offer_price: U256) -> Offer {
-        let mut offer: Offer = random_revealed_offer();
-        offer.offer_price_revealed = offer_price;
-        offer
     }
 }
