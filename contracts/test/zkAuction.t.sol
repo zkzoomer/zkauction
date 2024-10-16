@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
 import {stdJson} from "forge-std/StdJson.sol";
-import {zkAuction} from "../src/zkAuction.sol";
+import {zkAuctionVerifier} from "../src/zkAuction.sol";
 import {SP1VerifierGateway} from "@sp1-contracts/SP1VerifierGateway.sol";
 
 struct SP1ProofFixtureJson {
@@ -19,7 +19,7 @@ contract zkAuctionTest is Test {
     using stdJson for string;
 
     address verifier;
-    zkAuction public zkauction;
+    zkAuctionVerifier public zkAuction;
 
     function loadFixture() public view returns (SP1ProofFixtureJson memory) {
         string memory root = vm.projectRoot();
@@ -33,26 +33,23 @@ contract zkAuctionTest is Test {
         SP1ProofFixtureJson memory fixture = loadFixture();
 
         verifier = address(new SP1VerifierGateway(address(1)));
-        zkauction = new zkAuction(verifier, fixture.vkey);
+        zkAuction = new zkAuctionVerifier(verifier, fixture.vkey);
     }
 
-    function test_ValidzkAuctionProof() public {
+    function test_ValidAuctionProof() public {
         SP1ProofFixtureJson memory fixture = loadFixture();
 
         vm.mockCall(verifier, abi.encodeWithSelector(SP1VerifierGateway.verifyProof.selector), abi.encode(true));
 
-        (uint32 n, uint32 a, uint32 b) = zkauction.verifyzkAuctionProof(fixture.publicValues, fixture.proof);
-        assert(n == fixture.n);
-        assert(a == fixture.a);
-        assert(b == fixture.b);
+        zkAuction.verifyAuctionProof(fixture.publicValues, fixture.proof);
     }
 
-    function testFail_InvalidzkAuctionProof() public view {
+    function testFail_InvalidAuctionProof() public view {
         SP1ProofFixtureJson memory fixture = loadFixture();
 
         // Create a fake proof.
         bytes memory fakeProof = new bytes(fixture.proof.length);
 
-        zkauction.verifyzkAuctionProof(fixture.publicValues, fakeProof);
+        zkAuction.verifyAuctionProof(fixture.publicValues, fakeProof);
     }
 }
