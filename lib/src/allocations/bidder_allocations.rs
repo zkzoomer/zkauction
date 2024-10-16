@@ -139,8 +139,8 @@ impl Allocations for BidderAllocations {
     type Order = Bid;
 
     fn add_from_order(&mut self, order: &Bid) {
-        let bidder_allocation: &mut BidderAllocation = self.get_allocation(&order.bidder);
-        bidder_allocation.update_collateral_amount(order.collateral_amount);
+        self.get_allocation(&order.bidder)
+            .update_collateral_amount(order.collateral_amount);
     }
 
     fn get_allocation(&mut self, address: &Address) -> &mut BidderAllocation {
