@@ -2,8 +2,10 @@
 
 This project presents a proof of concept to infinitely scale onchain auctions by use of a ZK-powered architecture. You can find the original improvement proposal this work is based on [here](https://hackmd.io/@zkzoomer/B1bk2pWAA).
 
+This project was developed during the [Succinct Residency](https://blog.succinct.xyz/zk-residency/) program. A warm thanks goes out to the entire Succinct team for the opportunity to get us all [SP1lled](https://x.com/SuccinctLabs/status/1843359929463386572).
+
 > [!CAUTION]
-> This is an ongoing proof of concept and is **severely infested with critical bugs**. If you are so "*brave*" to use it in production, you will be left feeling **poor and very stupid**.
+> This is an ongoing proof of concept, and is **severely infested with critical bugs**. If you are so "*brave*" to use it in production, you will be left feeling **poor and very stupid**.
 
 ## Overview
 
