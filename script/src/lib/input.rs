@@ -22,7 +22,7 @@ pub fn set_inputs(
     let num_offers: i32 = 1000;
 
     let prover_address = Address::random();
-    let bid_submissions: BidSubmissions = (0..num_offers)
+    let bid_submissions: BidSubmissions = (0..num_orders / 2)
         .map(|_| BidSubmission {
             bidder: Address::random(),
             id: U96::from(rand::random::<u64>()),
@@ -31,7 +31,7 @@ pub fn set_inputs(
             collateralAmount: U256::from(rand::random::<u128>()),
         })
         .collect();
-    let offer_submissions: OfferSubmissions = (0..num_offers)
+    let offer_submissions: OfferSubmissions = (0..num_orders / 2)
         .map(|_| OfferSubmission {
             offeror: Address::random(),
             id: U96::from(rand::random::<u64>()),
@@ -39,14 +39,14 @@ pub fn set_inputs(
             amount: U256::from(rand::random::<u128>()),
         })
         .collect();
-    let bid_reveals: BidReveals = (0..num_offers)
+    let bid_reveals: BidReveals = (0..num_orders / 2)
         .map(|_| BidReveal {
             orderId: U256::from(rand::random::<u64>()),
             price: U256::from(rand::random::<u128>()),
             nonce: U256::from(rand::random::<u128>()),
         })
         .collect();
-    let offer_reveals: OfferReveals = (0..num_offers)
+    let offer_reveals: OfferReveals = (0..num_orders / 2)
         .map(|_| OfferReveal {
             orderId: U256::from(rand::random::<u64>()),
             price: U256::from(rand::random::<u128>()),
